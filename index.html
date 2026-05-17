@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>営農型農業経営シミュレーション「農トレ」</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="start-screen">
+        <div class="overlay"></div>
+        <div class="title-content">
+            <h1 class="main-title">農トレ <span class="sub-title">Web Edition</span></h1>
+            <p class="game-desc">〜 営農型太陽光発電と近代農業の経営シミュレーション 〜</p>
+            <div class="input-group">
+                <label for="name-input">プレイヤー名（班番号）：</label>
+                <input type="text" id="name-input" placeholder="例：1班_斎藤" maxlength="15">
+            </div>
+            <button id="start-game-btn">ゲームスタート</button>
+        </div>
+    </div>
+
+    <div id="setup-screen" class="hidden">
+        <div id="setup-content-wide">
+            <h2>戦略設定画面</h2>
+
+            <div class="info-box-land" style="background: #e2f0d9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #70ad47; text-align: left;">
+                <h3 style="margin-top: 0; color: #385723;">🎲 あなたのチームに割り当てられた農地</h3>
+                <p id="setup-land-name" class="highlight-text" style="font-size: 22px; font-weight: bold; color: #c65911; margin: 5px 0;">BaseLand</p>
+                <p id="setup-land-desc" class="sub-desc" style="font-size: 14px; color: #595959; margin: 0;">土地の特徴</p>
+            </div>
+
+            <p style="text-align: left; font-weight: bold; color: #d94111; background: #fff2cc; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+                ⚠️ 【ルール】各土地に「必要な従業員数」を満たすようにスタッフを配置してください（人手不足の土地は経営開始できません）。
+            </p>
+
+            <div id="land-cards-container"></div>
+
+            <button id="begin-business-btn" style="margin-top: 30px; padding: 15px 40px; font-size: 20px; font-weight: bold;">初期投資を実行して経営開始！</button>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <h1>農トレ 経営ダッシュボード</h1>
+        <div class="player-badge">プレイヤー: <span id="display-player-name">---</span></div>
+
+        <div class="status-board">
+            <p>所有農地: <span id="land-name" class="highlight-text">---</span></p>
+            <p>現在の年度: <span id="current-year">1</span> 年目</p>
+            <p>所持金: <span id="money">20,000,000</span> 円</p>
+        </div>
+
+        <div class="info-box">
+            <p>💡 各土地で設定した個別戦略に基づいて営農が行われています。「年度終了」を押すと決算を行います。</p>
+        </div>
+
+        <button id="end-year-btn">年度終了（決算計算を実行）</button>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <div class="setup-content" style="text-align: center;">
+            <h2>🎉 3年間経営お疲れ様でした！</h2>
+            <div class="status-board" style="margin: 20px auto; max-width: 400px;">
+                <p>最終総資産: <span id="final-money" class="highlight-text">0</span> 円</p>
+            </div>
+            <div class="info-box" style="background: #fff3cd;">
+                <h3>👑 経営評価ランク</h3>
+                <p id="result-rank" style="font-size: 24px; font-weight: bold; color: #d94111; margin: 10px 0;">---</p>
+                <p id="result-comment">評価コメント</p>
+            </div>
+            <button onclick="window.location.reload();" style="background: #28a745; margin-top: 20px;">タイトルに戻って再挑戦</button>
+        </div>
+    </div>
+
+    <script src="lands.js"></script>
+    <script src="employees.js"></script>
+    <script src="crops.js"></script>
+    <script src="markets.js"></script>
+    <script src="assets.js"></script>
+    <script src="events.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
