@@ -36,7 +36,7 @@
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
                             <span style="font-size:10px; color:#64748b; display:block;">現在残高</span>
-                            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">20,000,000 円</span>
+                            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">100,000,000 円</span>
                         </div>
                         <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
                             <span style="font-size:10px; color:#64748b; display:block;">累計費用</span>
@@ -46,8 +46,32 @@
                             <span style="font-size:10px; color:#64748b; display:block;">累計収益</span>
                             <span id="sum-cum-revenue" style="font-size:14px; font-weight:bold; color:#16a34a; display:block; text-align:right;">0 円</span>
                         </div>
+                        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0; border-left: 4px solid #64748b;">
+                            <span style="font-size:10px; color:#64748b; display:block;">初期資本金比 (通期損益)</span>
+                            <span id="sum-net-change" style="font-size:14px; font-weight:bold; color:#64748b; display:block; text-align:right;">±0 円 (維持)</span>
+                        </div>
                     </div>
                 </div>
+    <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #475569;">📊 通期財務サマリー (第 <span id="setup-year-display">1</span> 年度)</h4>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
+            <span style="font-size:10px; color:#64748b; display:block;">現在残高</span>
+            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">100,000,000 円</span>
+        </div>
+        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
+            <span style="font-size:10px; color:#64748b; display:block;">累計費用</span>
+            <span id="sum-cum-expense" style="font-size:14px; font-weight:bold; color:#dc2626; display:block; text-align:right;">0 円</span>
+        </div>
+        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
+            <span style="font-size:10px; color:#64748b; display:block;">累計収益</span>
+            <span id="sum-cum-revenue" style="font-size:14px; font-weight:bold; color:#16a34a; display:block; text-align:right;">0 円</span>
+        </div>
+        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0; border-left: 4px solid #64748b;" id="net-change-card-wrapper">
+            <span style="font-size:10px; color:#64748b; display:block;">初期資本金比 (通期損益)</span>
+            <span id="sum-net-change" style="font-size:14px; font-weight:bold; color:#64748b; display:block; text-align:right;">±0 円 (維持)</span>
+        </div>
+    </div>
+</div>
             </div>
 
             <div class="setup-main-content">

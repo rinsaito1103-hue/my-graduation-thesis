@@ -305,13 +305,25 @@ window.calculateLiveCardCost = function(cardOrIdx) {
         `;
     }
 
-    // 💡 カウンターテキストの書き換え（すでに上で宣言済みの idx をそのまま再利用）
+    // // 💡 カウンターテキストの書き換え（cardから直接属性データを取得してバグを修正）
     const counterDiv = document.getElementById(`card-cost-counter-${idx}`);
     if (counterDiv) {
         counterDiv.textContent = `💰 この農地の投資小計: ${(cardTotalInvestment).toLocaleString()} 円`;
     }
-};
 
+    // 🌟【新設】資材や作物をカチカチ切り替えた瞬間にも、初期資本金（1億円）比の損益カードを完全にリアルタイム連動させる
+    const netChange = gameState.money - 100000000;
+    const netChangeElement = document.getElementById("sum-net-change");
+    if (netChangeElement) {
+        if (netChange > 0) {
+            netChangeElement.innerHTML = `<span style="color: #16a34a; font-weight: bold;">＋${netChange.toLocaleString()} 円</span>`;
+        } else if (netChange < 0) {
+            netChangeElement.innerHTML = `<span style="color: #dc2626; font-weight: bold;">－${Math.abs(netChange).toLocaleString()} 円</span>`;
+        } else {
+            netChangeElement.innerHTML = `<span style="color: #64748b; font-weight: bold;">±0 円 (維持)</span>`;
+        }
+    }
+};
 
 // 🌟【新設】排他制御 ＆「最大3つまで」の上限制限バリデーションの完全連動
 window.handleAssetExclusion = function(element, cardIdx, type) {
@@ -366,12 +378,29 @@ window.handleAssetExclusion = function(element, cardIdx, type) {
     calculateLiveCardCost(cardIdx);
 };
 
-// 財務バナー更新
+// 財務バナー更新（画面上に「初期資本金比」の項目カードを確実に強制生成して反映）
 function updateSetupFinancialBanner() {
     setupYearDisplay.textContent = gameState.year;
     sumCurrentMoney.textContent = `${gameState.money.toLocaleString()} 円`;
     sumCumExpense.textContent = `${gameState.cumExpenses.toLocaleString()} 円`;
     sumCumRevenue.textContent = `${gameState.cumRevenue.toLocaleString()} 円`;
+
+    // 🌟 初期資本金（1億円）からのリアルタイム通期損益を計算
+    const totalSetupInvestment = window.currentTotalSetupInvestment || 0;
+    const estimatedMoney = gameState.money - totalSetupInvestment;
+    const netChange = estimatedMoney - 100000000;
+    
+    // HTML上のカードを見つけて数値を安全に色分け反映
+    const netChangeElement = document.getElementById("sum-net-change");
+    if (netChangeElement) {
+        if (netChange > 0) {
+            netChangeElement.innerHTML = `<span style="color: #16a34a; font-weight: bold;">＋${netChange.toLocaleString()} 円</span>`;
+        } else if (netChange < 0) {
+            netChangeElement.innerHTML = `<span style="color: #dc2626; font-weight: bold;">－${Math.abs(netChange).toLocaleString()} 円</span>`;
+        } else {
+            netChangeElement.innerHTML = `<span style="color: #64748b; font-weight: bold;">±0 円 (維持)</span>`;
+        }
+    }
 }
 
 // --- 4. 画面遷移：タイトル ➔ セットアップ ---
