@@ -1,6 +1,14 @@
-/* 全体の基本設定 */
+/* ==========================================================================
+   🚜 農業経営シミュレーションゲーム「Nototore」最適化スタイルシート（完全版）
+   ========================================================================== */
+
+/* --- 1. 全般・基本リセット --- */
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
     background-color: #f4f7f6;
     margin: 0;
     padding: 0;
@@ -8,14 +16,13 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    box-sizing: border-box;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* --- 【画面1】タイトル画面のスタイル --- */
+/* --- 2. 【画面1】スタートタイトル画面 --- */
 #start-screen {
     position: relative;
     width: 100vw;
@@ -52,260 +59,411 @@ body {
 .sub-title { font-size: 18px; color: #2ecc71; display: block; }
 .game-desc { font-size: 12px; color: #7f8c8d; margin-bottom: 30px; }
 
-/* --- 【新設：画面2】セットアップ画面 ＆ 【画面3】メイン画面のスタイル --- */
-#setup-screen, #game-container {
-    background: #fff;
-    padding: 35px;
-    border-radius: 16px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    width: 90%;
-    max-width: 460px;
-    border-top: 8px solid #3498db; /* 戦略画面は知的な青 */
-}
-
-#game-container {
-    border-top: 8px solid #2ecc71; /* メイン画面は農業の緑 */
-}
-
-h2 {
-    font-size: 24px;
-    color: #2c3e50;
-    margin-top: 0;
-    margin-bottom: 15px;
-}
-
-/* 土地決定の案内ボックス */
-.info-box-land {
-    background: #ebf5fb;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 15px 0;
-    border-left: 5px solid #3498db;
-}
-.info-box-land h3 { margin: 0 0 5px 0; font-size: 14px; color: #2980b9; }
-
-.sub-desc {
-    font-size: 12px;
-    color: #7f8c8d;
-    margin: 5px 0 0 0;
-}
-
-.player-badge {
-    background: #34495e;
-    color: white;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    display: inline-block;
-}
-
-.status-board {
-    background: #eef9f1;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 15px 0;
-    font-weight: bold;
-}
-
-.info-box {
-    background: #fdf2e9;
-    padding: 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #d35400;
-    margin-bottom: 20px;
-    line-height: 1.4;
-}
-
-/* 入力・フォーム */
+/* 共通入力グループ（タイトル画面用） */
 .input-group {
     text-align: left;
     margin-top: 20px;
     margin-bottom: 20px;
 }
-
 .input-group label {
     font-size: 14px;
     font-weight: bold;
     color: #34495e;
 }
-
-input[type="text"], select {
+input[type="text"] {
     width: 100%;
     padding: 12px;
     margin-top: 6px;
     border-radius: 6px;
     border: 1px solid #ccc;
-    box-sizing: border-box;
     font-size: 14px;
 }
 
-/* ボタン */
-button {
-    width: 100%;
-    padding: 14px;
-    background-color: #3498db; /* 初期ボタンは青 */
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s;
-}
-
-#start-game-btn, #next-turn-btn {
-    background-color: #2ecc71; /* スタートと年度終了は緑 */
-}
-
-button:hover { filter: brightness(0.9); }
-
-.danger-button { background-color: #e74c3c; margin-top: 15px; }
-.highlight-text { color: #27ae60; font-weight: bold; font-size: 18px; }
-
-/* --- 🌟【画面横幅フル活用】中央寄せの呪いを解き、PDF通りの3列マトリクスを強制するスタイル --- */
-
-/* 既存のスタイルが持っている「狭い横幅制限」を、この画面だけ完全に無視させる */
+/* --- 3. 【画面2】戦略設定画面（2列ワイドダッシュボード構造） --- */
 #setup-screen {
-    width: 100vw !important;
-    max-width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: flex;
-    justify-content: center;
+    width: 100% !important;
+    max-width: 1600px !important;
+    margin: 0 auto !important;
+    padding: 20px !important;
+    display: block ; /* 中央寄せの呪いを完全解除 */
 }
 
-/* コンテンツエリアを画面の左右限界（96%）まで強制的に広げる */
 #setup-content-wide {
-    width: 96% !important;
-    max-width: 1600px !important; /* ワイドモニターなら最大1600pxまで広げる */
-    margin: 20px auto !important;
-    box-sizing: border-box;
-    text-align: center;
+    display: flex;
+    gap: 25px;
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
 }
 
-/* 🌟 縦並びを絶対に許さない、強力な3列グリッドレイアウト */
+/* 👈 左側サイドバー：土地情報＆通期財務サマリー */
+.setup-left-sidebar {
+    flex: 0 0 320px; /* 幅を320pxに完全固定して文字潰れを徹底防御 */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.setup-left-sidebar h2 {
+    font-size: 24px;
+    color: #1e40af;
+    margin: 0;
+    font-weight: bold;
+    line-height: 1.3;
+}
+
+/* 👉 右側メインコンテンツ：ルール案内、カードグリッド、開始ボタン */
+.setup-main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0; /* 子要素のはみ出しを物理的に防ぐ */
+}
+
+/* 🌟 4枚のカードを2×2（最大3列）に並べるグリッド構造 */
 #land-cards-container {
-    margin-top: 20px !important;
-    max-height: none !important; 
-    overflow-y: visible !important;
-    
     display: grid !important;
-    /* 1枚あたり横幅400px以上を確保しつつ、空いている横スペースに最大3枚（3列）自動で並べる */
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)) !important;
-    gap: 20px !important; /* カードとカードの間の隙間をしっかり空ける */
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)) !important;
+    gap: 20px !important;
     width: 100% !important;
 }
 
-/* 土地カード1枚1枚を横長のスマートな形に固定 */
+/* 土地戦略カード1枚1枚のベース設計 */
 .land-strategy-card {
     background: #ffffff !important; 
     border: 2px solid #cbd5e1 !important; 
-    padding: 12px 16px !important; 
+    padding: 15px !important; 
     border-radius: 12px !important; 
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
-    transition: all 0.2s ease-index;
-    
     display: flex !important;
-    flex-wrap: wrap !important; /* タイトルを下パーツと分けるため */
+    flex-direction: column !important;
+    gap: 12px !important;
     box-sizing: border-box;
 }
 
-/* タイトルをカードの最上部に固定 */
 .land-strategy-card h4 {
-    font-size: 16px !important;
-    margin: 0 0 10px 0 !important;
-    padding-bottom: 4px !important;
+    font-size: 15px !important;
+    margin: 0 !important;
+    padding-bottom: 6px !important;
     border-bottom: 2px solid #2e75b6 !important;
-    flex-basis: 100% !important; 
-    text-align: left !important;
     color: #1e40af;
 }
 
-/* 👈 左半分：作物 ＆ 出荷先 */
-.land-strategy-card-left {
-    flex: 1.1 !important;
-    min-width: 180px !important;
-    padding-right: 12px !important;
-    text-align: left !important;
-}
-
-/* 👉 右半分：従業員 ＆ 資材 */
-.land-strategy-card-right {
-    flex: 1.2 !important;
-    min-width: 200px !important;
-    border-left: 1px dashed #cbd5e1 !important; 
-    padding-left: 12px !important;
-    text-align: left !important;
-}
-
-/* 項目ごとの行間を極限まで詰めて縦長を防止 */
-.form-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 4px;
-}
-
-.form-item {
-    flex: 1;
-}
-
-.land-strategy-card label {
-    font-size: 12px !important;
-    font-weight: bold;
-    display: block;
-    color: #475569;
-    margin-bottom: 2px;
-}
-
-.land-strategy-card select {
-    font-size: 12px !important;
-    padding: 3px !important; 
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 4px !important;
+/* 🌟 カード内部の「左右2列分け」のバグを完全修正 */
+.card-inner-flex {
+    display: flex !important;
+    gap: 15px !important;
     width: 100% !important;
     box-sizing: border-box;
 }
 
-/* 従業員セレクトボックスの横並び */
-.worker-row-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 8px;
-}
-.worker-row-container select {
-    flex: 1;
-    min-width: 90px; 
+.land-strategy-card-left {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    min-width: 0;
 }
 
-/* 資材チェックボックスエリアを綺麗な2列に並べる */
+.land-strategy-card-right {
+    flex: 1.2 !important;
+    border-left: 1px dashed #cbd5e1 !important;
+    padding-left: 15px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    min-width: 0;
+}
+
+/* カード内パーツのサイズ微調整 */
+.land-strategy-card label {
+    font-size: 11px !important;
+    font-weight: bold;
+    color: #475569;
+    margin: 0 0 3px 0 !important;
+    display: block;
+}
+
+.land-strategy-card select {
+    width: 100% !important;
+    padding: 6px !important;
+    border-radius: 6px !important;
+    border: 1px solid #cbd5e1 !important;
+    font-size: 12px !important;
+    background-color: #f8fafc;
+    box-sizing: border-box;
+}
+
+/* 👤 スタッフドロップダウン用コンテナ */
+.worker-row-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+
+/* 🛠️ 農業資材チェックボックス枠（文字消えを100%防ぐ縦並びフレックス） */
 .asset-mini-grid {
-    font-size: 11px;
-    display: grid;
-    grid-template-columns: 1fr 1fr; 
-    gap: 4px 6px;
-    background: #f8fafc;
-    padding: 6px;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    background: #f8fafc !important;
+    padding: 10px !important;
+    border-radius: 6px !important;
+    border: 1px solid #e2e8f0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
 }
 
 .land-strategy-card label.asset-label {
-    display: flex;
-    align-items: center;
-    font-weight: normal;
+    font-weight: normal !important;
     font-size: 11px !important;
-    margin: 0;
+    display: flex !important;
+    align-items: center !important;
+    white-space: normal !important; /* 文字の自動折り返しを許可 */
+    cursor: pointer;
+    margin: 0 !important;
+    line-height: 1.4;
 }
 
 .land-strategy-card input[type="checkbox"] {
-    transform: scale(0.9);
-    margin: 0 4px 0 0;
+    margin-right: 6px !important;
+    transform: scale(1.0) !important;
+    flex-shrink: 0; /* チェックボックス自体が横に潰れるのを防ぐ */
 }
 
-/* ホバー時の浮き上がり演出 */
-.land-strategy-card:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.15) !important;
+/* 💰 各農地のリアルタイム投資小計カウンター */
+.land-cost-counter {
+    background: #fff7ed !important;
+    border: 1px dashed #fed7aa !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    color: #c2410c !important;
+    font-weight: bold !important;
+    text-align: right !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    margin-top: 5px;
+}
+
+/* 経営開始ボタン */
+#begin-business-btn {
+    align-self: flex-end;
+    background-color: #2e75b6;
+    color: white;
+    padding: 12px 40px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    width: auto !important; /* 幅が100%に広がるのを防ぐ */
+}
+#begin-business-btn:hover { background-color: #1e40af; }
+
+
+/* --- 4. 【画面3】メインゲーム ＆ 決算ダッシュボード画面 --- */
+#game-container {
+    background: #fff;
+    padding: 35px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    width: 90%;
+    max-width: 1000px; /* ワイドに広げてテーブルを見やすく */
+    border-top: 8px solid #2ecc71; 
+}
+
+.status-panel {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: left;
+}
+
+#financial-dashboard {
+    background: #ffffff;
+    border: 2px solid #2e75b6;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    animation: fadeIn 0.4s ease;
+}
+
+#dashboard-title {
+    margin-top: 0;
+    color: #1e40af;
+    border-bottom: 3px double #2e75b6;
+    padding-bottom: 8px;
+    font-size: 20px;
+    text-align: left;
+}
+
+/* 🎲 環境イベント表示カード */
+.event-display-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.event-card {
+    flex: 1;
+    padding: 10px 15px;
+    border-radius: 8px;
+    text-align: left;
+    position: relative;
+}
+
+.global-event-card { background: #eff6ff; border: 1px solid #bfdbfe; }
+.local-event-card { background: #fef2f2; border: 1px solid #fecaca; }
+
+.event-badge {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+}
+.global-event-card .event-badge { background-color: #3b82f6; }
+.local-event-card .event-badge { background-color: #ef4444; }
+.event-card h4 { margin: 5px 0 0 0; font-size: 16px; color: #1e293b; }
+
+/* 📉 財務損益（P/L）ステートメント */
+.financial-statement-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+.financial-statement-box h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #334155;
+    border-left: 4px solid #1e40af;
+    padding-left: 8px;
+}
+.statement-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+.statement-item {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.statement-item .stat-label { font-size: 11px; color: #64748b; font-weight: bold; margin-bottom: 4px; }
+.statement-item .stat-value { font-size: 16px; font-weight: bold; color: #1e293b; text-align: right; }
+
+.expense-color { border-left: 4px solid #ef4444 !important; }
+.expense-color .stat-value { color: #dc2626; }
+.revenue-color { border-left: 4px solid #22c55e !important; }
+.revenue-color .stat-value { color: #16a34a; }
+.total-color { border-left: 4px solid #3b82f6 !important; background: #eff6ff !important; }
+.total-color .stat-value { color: #1e40af; font-size: 18px; }
+
+/* 📋 決算結果詳細マトリクステーブル */
+.table-responsive {
+    overflow-x: auto;
+    margin-top: 15px;
+}
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: center;
+}
+.dashboard-table th {
+    background-color: #2e75b6;
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+}
+.dashboard-table td {
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+}
+.dashboard-table tr:nth-child(even) { background-color: #f8fafc; }
+
+.stat-down { color: #dc2626; font-weight: bold; } 
+.stat-up { color: #16a34a; font-weight: bold; }   
+
+/* メイン画面の決算・次へボタン */
+#end-year-btn, #next-year-phase-btn {
+    width: auto !important;
+    display: inline-block;
+}
+
+/* --- 5. 【画面4】ゲーム結果（リザルト）画面 --- */
+#result-screen {
+    background: #fff;
+    padding: 35px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    border-top: 8px solid #1e40af;
+}
+
+.highlight-text { color: #27ae60; font-weight: bold; font-size: 18px; }
+
+/* アニメーション */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 📊【新設】戦略設定画面用：営農計画シミュレーター（スプレッドシート風） --- */
+
+.live-simulation-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 10px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+}
+
+.live-simulation-table th, .live-simulation-table td {
+    border: 1px solid #cbd5e1;
+    padding: 4px 8px;
+    text-align: left;
+}
+
+/* スプレッドシート風の色分け */
+.live-simulation-table th {
+    background-color: #f1f5f9;
+    color: #475569;
+    font-weight: bold;
+    text-align: center;
+}
+
+.row-revenue-header { background-color: #e0f2fe !important; font-weight: bold; } /* 売上行（水色） */
+.row-expense-header { background-color: #fee2e2 !important; font-weight: bold; } /* 費用行（赤色） */
+.row-profit-header { background-color: #ccfbf1 !important; font-weight: bold; font-size: 12px; } /* 見込利益（緑色） */
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+/* カード自体の高さを自動調整できるように微調整 */
+.land-strategy-card {
+    height: auto !important;
 }
