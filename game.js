@@ -143,59 +143,47 @@ function generateLandStrategyUI() {
     }
 }
 
-// 💡 リアルタイムの農地別投資コスト計算（超堅牢版）
-// 💡 リアルタイム営農シミュレーター＆コスト合算システム（完全再現版）
-// 💡【型エラー修正版】引数が「カード番号(数字)」でも「HTML要素」でも安全に処理するロジック
+// 💡 リアルタイム営農シミュレーター＆コスト合算システム（エラー完全解消版）
 window.calculateLiveCardCost = function(cardOrIdx) {
     if (!cardOrIdx) return;
 
-    // もし引数が「数字（カード番号）」として送られてきた場合は、画面からHTML要素を正しく取得し直す
     let card;
     if (typeof cardOrIdx === "object") {
         card = cardOrIdx;
     } else {
         card = document.querySelector(`.land-strategy-card[data-idx="${cardOrIdx}"]`);
     }
-    
     if (!card) return;
 
     const cropId = card.querySelector(".land-crop-select").value;
     const landCostBase = gameState.currentLand ? gameState.currentLand.cost : 0;
 
-    // 1. 作物基本データの引き当て
     const crop = CROP_MASTER.find(c => c.id === cropId);
-    let baseYieldPerUnit = crop ? crop.yieldPerUnit : 0; // 👈 .yieldPerUnit に修正しました
+    let baseYieldPerUnit = crop ? crop.yieldPerUnit : 0;
 
-    // 土地パワーの取得
     let landPower = 1.0;
     if (gameState.currentLand && gameState.currentLand.id === "suwa") landPower = 1.2;
     if (gameState.currentLand && gameState.currentLand.id === "matsumoto") landPower = 1.5;
 
-    // 2. 販売先基本データの引き当て（選択された作物IDごとのマスター単価に完全連動）
     const marketId = card.querySelector(".land-market-select").value;
     let basePricePerKg = 0; 
     let marketName = "農協";
     let saleLimitText = "上限なし";
 
-    // 本番の決算と同じMARKET_MASTERから、選択された作物の基礎価格を動的に引っ張る
     const marketObj = MARKET_MASTER.find(m => m.id === marketId);
     if (marketObj) {
         marketName = marketObj.name;
-        // 作物ごとの正しい単価を取得
         basePricePerKg = marketObj.prices[cropId] || 0; 
     }
 
-    // 販売上限制限のテキスト表記のアップデート
     if (marketId === "restaurant") saleLimitText = "200 kg";
     if (marketId === "natural_store") saleLimitText = "250 kg";
 
-    // もし該当作物の取り扱いがない（出荷不可・価格がnull）のときの安全処理
     if (basePricePerKg === 0 || basePricePerKg === null) {
         basePricePerKg = 0;
         saleLimitText = "出荷不可";
     }
 
-    // 3. 従業員人件費の計算 ＆ 【仕様書完全準拠】ITシステム連動型の収量・技術判定
     let laborCost = 0;
     let workerCount = 0;
     let techShortage = false; 
@@ -234,8 +222,6 @@ window.calculateLiveCardCost = function(cardOrIdx) {
 
     let avgWorkerMultiplier = workerCount > 0 ? (totalWorkerYieldMultiplier / workerCount) : 0;
 
-    // --- 📊 計算ロジック ---
-    // 💡 計画収穫量 ＝ 基礎収量 × 土地パワー × 従業員制限倍率
     let planYield = baseYieldPerUnit * landPower * avgWorkerMultiplier; 
     
     let techStatusText = "<span style='color:#16a34a; font-weight:bold;'>合格</span>";
@@ -244,15 +230,12 @@ window.calculateLiveCardCost = function(cardOrIdx) {
         techStatusText = "<span style='color:#dc2626; font-weight:bold;'>⚠️技術不足・出荷不可</span>";
     }
 
-    // 販売上限制限の適用
     let actualSaleQty = planYield;
     if (marketId === "restaurant" && actualSaleQty > 200) actualSaleQty = 200;
     if (marketId === "natural_store" && actualSaleQty > 250) actualSaleQty = 250;
 
-    // 💡 売上高 ＝ 実際の販売量 × 正しい動的単価(basePricePerKg)
     let estimatedRevenue = Math.round(actualSaleQty * basePricePerKg); 
 
-    // 💡 念のため計算が走るタイミングでも、有機栽培条件を満たしていない自然派ストア選択を強制リセット
     const pBox = card.querySelector(".asset-pesticide");
     const fBox = card.querySelector(".asset-fertilizer");
     const oBox = card.querySelector(".asset-organic");
@@ -260,19 +243,32 @@ window.calculateLiveCardCost = function(cardOrIdx) {
 
     if (!isOrganicValid && marketId === "natural_store") {
         card.querySelector(".land-market-select").value = "JA";
-        return calculateLiveCardCost(card); // 農協に書き換えて再計算
+        return calculateLiveCardCost(card); 
     }
 
-    // 4. 資材費用の計算
-    let seedCost = card.querySelector(".asset-seed")?.checked ? 1000000 : 0;
+    let seedCost = 0;
+    if (cropId === "cabbage") seedCost = 5000;
+    else if (cropId === "corn") seedCost = 10000;
+    else if (cropId === "strawberry") seedCost = 12000;
+    else if (cropId === "tomato") seedCost = 10000;
+    else if (cropId === "hakusai") seedCost = 8000;
+    else if (cropId === "artichoke") seedCost = 12000;
+    else if (cropId === "daikon") seedCost = 16000;
+    else if (cropId === "japanese_parsley") seedCost = 8000;
+
     let assetCost = 0;
+    if (card.querySelector(".asset-machinery")?.checked) assetCost += 1500000;
+    if (card.querySelector(".asset-house")?.checked) assetCost += 4000000;
     if (card.querySelector(".asset-it")?.checked) assetCost += 2000000;
-    if (card.querySelector(".asset-shield")?.checked) assetCost += 1500000;
+    if (card.querySelector(".asset-pesticide")?.checked) assetCost += 500000;
+    if (card.querySelector(".asset-fertilizer")?.checked) assetCost += 500000;
+    if (card.querySelector(".asset-organic")?.checked) assetCost += 1000000;
 
-    let cardTotalInvestment = seedCost + laborCost + assetCost; 
-    let estimatedProfit = estimatedRevenue - (cardTotalInvestment + (landCostBase / (gameState.currentLand ? gameState.currentLand.totalCards : 1))); 
+    // 💡 投資小計に土地代を合算する（重複エラーが出ないようにここで1回だけ宣言）
+    let cardTotalInvestment = seedCost + laborCost + assetCost + landCostBase;
+    
+    let estimatedProfit = Math.round(estimatedRevenue - cardTotalInvestment); 
 
-    // 💡【実在要素に修正】画面上のtable要素（simulation-table-番号）を直接狙って内訳を流し込む
     const idx = card.getAttribute("data-idx");
     const simTable = document.getElementById(`simulation-table-${idx}`);
     if (simTable) {
@@ -296,6 +292,7 @@ window.calculateLiveCardCost = function(cardOrIdx) {
                 <tr><td>　販売上限制限</td><td class="text-center">kg</td><td class="text-right">${saleLimitText}</td></tr>
 
                 <tr class="row-expense-header"><td>投資小計 (費用)</td><td class="text-center">円</td><td class="text-right">${cardTotalInvestment.toLocaleString()}</td></tr>
+                <tr><td>　土地の貸借料</td><td class="text-center">円</td><td class="text-right">${landCostBase.toLocaleString()}</td></tr>
                 <tr><td>　種苗・苗木費</td><td class="text-center">円</td><td class="text-right">${seedCost.toLocaleString()}</td></tr>
                 <tr><td>　従業員人件費</td><td class="text-center">円</td><td class="text-right">${laborCost.toLocaleString()}</td></tr>
                 <tr><td>　設備・IT投資費</td><td class="text-center">円</td><td class="text-right">${assetCost.toLocaleString()}</td></tr>
@@ -305,23 +302,13 @@ window.calculateLiveCardCost = function(cardOrIdx) {
         `;
     }
 
-    // // 💡 カウンターテキストの書き換え（cardから直接属性データを取得してバグを修正）
     const counterDiv = document.getElementById(`card-cost-counter-${idx}`);
     if (counterDiv) {
         counterDiv.textContent = `💰 この農地の投資小計: ${(cardTotalInvestment).toLocaleString()} 円`;
     }
 
-    // 🌟【新設】資材や作物をカチカチ切り替えた瞬間にも、初期資本金（1億円）比の損益カードを完全にリアルタイム連動させる
-    const netChange = gameState.money - 100000000;
-    const netChangeElement = document.getElementById("sum-net-change");
-    if (netChangeElement) {
-        if (netChange > 0) {
-            netChangeElement.innerHTML = `<span style="color: #16a34a; font-weight: bold;">＋${netChange.toLocaleString()} 円</span>`;
-        } else if (netChange < 0) {
-            netChangeElement.innerHTML = `<span style="color: #dc2626; font-weight: bold;">－${Math.abs(netChange).toLocaleString()} 円</span>`;
-        } else {
-            netChangeElement.innerHTML = `<span style="color: #64748b; font-weight: bold;">±0 円 (維持)</span>`;
-        }
+    if (typeof updateSetupFinancialBanner === "function") {
+        updateSetupFinancialBanner();
     }
 };
 
@@ -378,19 +365,57 @@ window.handleAssetExclusion = function(element, cardIdx, type) {
     calculateLiveCardCost(cardIdx);
 };
 
-// 財務バナー更新（画面上に「初期資本金比」の項目カードを確実に強制生成して反映）
+// 財務バナー更新（全農地カードの選択状態をリアルタイムにスキャンして合算）
 function updateSetupFinancialBanner() {
+    if (!gameState.currentLand) return;
+
     setupYearDisplay.textContent = gameState.year;
-    sumCurrentMoney.textContent = `${gameState.money.toLocaleString()} 円`;
     sumCumExpense.textContent = `${gameState.cumExpenses.toLocaleString()} 円`;
     sumCumRevenue.textContent = `${gameState.cumRevenue.toLocaleString()} 円`;
 
-    // 🌟 初期資本金（1億円）からのリアルタイム通期損益を計算
-    const totalSetupInvestment = window.currentTotalSetupInvestment || 0;
-    const estimatedMoney = gameState.money - totalSetupInvestment;
+    // 🌟 1. 初期値を0円からスタートし、土地代も各カードごとに1枚ずつ合算する
+    let totalInvestment = 0; 
+    
+    // 🌟 2. 画面上のすべての農地カードをループして、土地賃料・人件費・資材費・苗代を正確に合算
+    const cards = document.querySelectorAll(".land-strategy-card");
+    cards.forEach(card => {
+        // 【追加】土地1枚ずつの年間賃料を合算
+        totalInvestment += gameState.currentLand.cost;
+
+        const cropId = card.querySelector(".land-crop-select")?.value;
+        if (!cropId) return;
+
+        // 配置された従業員の人件費を合算
+        card.querySelectorAll(".land-worker-select").forEach(sel => {
+            const emp = EMPLOYEE_MASTER.find(e => e.id === sel.value);
+            if (emp) totalInvestment += emp.cost;
+        });
+
+        // 導入された農業資材の費用を画面の表示金額基準で合算
+        if (card.querySelector(".asset-machinery")?.checked) totalInvestment += 1500000;
+        if (card.querySelector(".asset-house")?.checked) totalInvestment += 4000000;
+        if (card.querySelector(".asset-it")?.checked) totalInvestment += 2000000;
+        if (card.querySelector(".asset-pesticide")?.checked) totalInvestment += 500000;
+        if (card.querySelector(".asset-fertilizer")?.checked) totalInvestment += 500000;
+        if (card.querySelector(".asset-organic")?.checked) totalInvestment += 1000000;
+
+        // 作物ごとの苗代コストを合算
+        if (cropId === "cabbage") totalInvestment += 5000;
+        else if (cropId === "corn") totalInvestment += 10000;
+        else if (cropId === "strawberry") totalInvestment += 12000;
+        else if (cropId === "tomato") totalInvestment += 10000;
+        else if (cropId === "hakusai") totalInvestment += 8000;
+        else if (cropId === "artichoke") totalInvestment += 12000;
+        else if (cropId === "daikon") totalInvestment += 16000;
+        else if (cropId === "japanese_parsley") totalInvestment += 8000;
+    });
+
+    // 🌟 3. 現在の資金から投資見込額を引いた「実質残高」と「初期資本金比」を計算
+    const estimatedMoney = gameState.money - totalInvestment;
     const netChange = estimatedMoney - 100000000;
     
-    // HTML上のカードを見つけて数値を安全に色分け反映
+    sumCurrentMoney.textContent = `${estimatedMoney.toLocaleString()} 円`;
+
     const netChangeElement = document.getElementById("sum-net-change");
     if (netChangeElement) {
         if (netChange > 0) {
@@ -428,11 +453,15 @@ let currentYearStartMoney = 0;
 
 beginBusinessBtn.addEventListener("click", () => {
     gameState.landStrategies = [];
-    let totalInvestment = gameState.currentLand.cost; 
+    // 💡【修正】初期値を0円にし、各土地のループ内で1枚ずつ賃料を徴収する
+    let totalInvestment = 0; 
 
     const cards = document.querySelectorAll(".land-strategy-card");
     
     for (let card of cards) {
+        // 【追加】各農地ごとに土地1枚ずつの年間賃料を正確に合算
+        totalInvestment += gameState.currentLand.cost;
+
         const cropId = card.querySelector(".land-crop-select").value;
         const marketId = card.querySelector(".land-market-select").value;
         
@@ -452,7 +481,16 @@ beginBusinessBtn.addEventListener("click", () => {
         });
 
         employees.forEach(e => totalInvestment += e.cost);
-        assets.forEach(a => totalInvestment += a.cost);
+        
+        // 確定ボタンを押した際にも、画面の表示金額通りの資材コストを正確に徴収する
+        checkedBoxes.forEach(box => {
+            if (box.value === "machinery") totalInvestment += 1500000;
+            if (box.value === "greenhouse") totalInvestment += 4000000;
+            if (box.value === "it_system") totalInvestment += 2000000;
+            if (box.value === "pesticide") totalInvestment += 500000;
+            if (box.value === "fertilizer") totalInvestment += 500000;
+            if (box.value === "organic") totalInvestment += 1000000;
+        });
         
         // 苗代コストの計算用補正
         if (cropId === "cabbage") totalInvestment += 5000;

@@ -21,10 +21,10 @@
     </div>
 
     <div id="setup-screen" class="hidden">
-        <div id="setup-content-wide">
+        <div id="setup-content-wide" style="display: flex; flex-direction: row; gap: 25px; align-items: flex-start; width: 100%; flex-wrap: nowrap; margin-top: 20px;">
             
-            <div class="setup-left-sidebar">
-                <h2>🚜 第 <span id="setup-year-display">1</span> 年目<br>経営戦略設定</h2>
+            <div class="setup-left-sidebar" style="width: 320px; min-width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px;">
+                <h2 style="margin-top: 0;">🚜 第 <span id="setup-year-display">1</span> 年目<br>経営戦略設定</h2>
                 
                 <div style="background: #e2f0d9; padding: 15px; border-radius: 8px; border: 2px solid #70ad47;">
                     <h3 id="setup-land-name" style="margin: 0 0 5px 0; color: #385723; font-size: 18px;">-</h3>
@@ -35,7 +35,7 @@
                     <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #475569;">📊 通期財務サマリー</h4>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-                            <span style="font-size:10px; color:#64748b; display:block;">現在残高</span>
+                            <span style="font-size:10px; color:#64748b; display:block;">現在残高（投資見込）</span>
                             <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">100,000,000 円</span>
                         </div>
                         <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
@@ -52,29 +52,9 @@
                         </div>
                     </div>
                 </div>
-    <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #475569;">📊 通期財務サマリー (第 <span id="setup-year-display">1</span> 年度)</h4>
-    <div style="display: flex; flex-direction: column; gap: 8px;">
-        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-            <span style="font-size:10px; color:#64748b; display:block;">現在残高</span>
-            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">100,000,000 円</span>
-        </div>
-        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-            <span style="font-size:10px; color:#64748b; display:block;">累計費用</span>
-            <span id="sum-cum-expense" style="font-size:14px; font-weight:bold; color:#dc2626; display:block; text-align:right;">0 円</span>
-        </div>
-        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-            <span style="font-size:10px; color:#64748b; display:block;">累計収益</span>
-            <span id="sum-cum-revenue" style="font-size:14px; font-weight:bold; color:#16a34a; display:block; text-align:right;">0 円</span>
-        </div>
-        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0; border-left: 4px solid #64748b;" id="net-change-card-wrapper">
-            <span style="font-size:10px; color:#64748b; display:block;">初期資本金比 (通期損益)</span>
-            <span id="sum-net-change" style="font-size:14px; font-weight:bold; color:#64748b; display:block; text-align:right;">±0 円 (維持)</span>
-        </div>
-    </div>
-</div>
             </div>
 
-            <div class="setup-main-content">
+            <div class="setup-main-content" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
                 <p style="margin:0; font-weight: bold; color: #d94111; background: #fff2cc; padding: 8px 12px; border-radius: 5px; font-size: 12px;">
                     ⚠️ 【ルール】各土地にスタッフを配置し、導入する資材（施設含む）を選んでください。※資材・施設は1面につき最大3つまで選択可能です。
                 </p>
@@ -177,12 +157,12 @@
         </div>
     </div>
 
-    <script src="lands.js"></script>
-    <script src="employees.js"></script>
-    <script src="crops.js"></script>
-    <script src="markets.js"></script>
-    <script src="assets.js"></script>
-    <script src="events.js"></script>
-    <script src="game.js"></script>
+    <script src="lands.js?v=2"></script>
+    <script src="employees.js?v=2"></script>
+    <script src="crops.js?v=2"></script>
+    <script src="markets.js?v=2"></script>
+    <script src="assets.js?v=2"></script>
+    <script src="events.js?v=2"></script>
+    <script src="game.js?v=6"></script>
 </body>
 </html>

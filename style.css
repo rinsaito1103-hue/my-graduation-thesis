@@ -467,3 +467,13 @@ input[type="text"] {
 .land-strategy-card {
     height: auto !important;
 }
+
+/* 💡 農業戦略カードを常に綺麗な横2列で縦に伸ばす設定 */
+#land-cards-container {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: start;
+}
