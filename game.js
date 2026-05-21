@@ -7,7 +7,11 @@ let gameState = {
     cumExpenses: 0,       // 累計費用
     cumRevenue: 0,        // 累計収益
     currentLand: null,
-    landStrategies: [] 
+    landStrategies: [],
+    // グラフ用の履歴データ（0年目の初期状態をあらかじめセット）
+    history: [
+        { year: 0, money: 100000000, expense: 0, revenue: 0 }
+    ]
 };
 
 // --- 2. 画面要素（DOM）の取得 ---
@@ -445,6 +449,7 @@ startBtn.addEventListener("click", () => {
 
     startScreen.classList.add("hidden");
     setupScreen.classList.remove("hidden");
+    setTimeout(renderFinancialChart, 50);
 });
 
 // --- 5. セットアップ完了 ➔ 経営開始 ---
@@ -717,6 +722,17 @@ endYearBtn.addEventListener("click", () => {
     stmtTotalRevenue.textContent = `＋ ${totalYearRevenue.toLocaleString()} 円`;
     stmtEndMoney.textContent = `${gameState.money.toLocaleString()} 円`;
 
+    // 🌟【新設】今年の決算データをグラフ用の履歴配列に自動保存
+    if (!gameState.history) {
+        gameState.history = [{ year: 0, money: 100000000, expense: 0, revenue: 0 }];
+    }
+    gameState.history.push({
+        year: gameState.year,
+        money: gameState.money,
+        expense: currentYearExpenses,
+        revenue: totalYearRevenue
+    });
+
     financialDashboard.classList.remove("hidden");
     endYearBtn.classList.add("hidden");
     nextYearPhaseBtn.classList.remove("hidden");
@@ -731,17 +747,18 @@ nextYearPhaseBtn.addEventListener("click", () => {
         finalMoneyElement.textContent = gameState.money.toLocaleString();
         showFinalResult();
     } else {
-        // 💡 画面を切り替える前に、現在のカード上の選択状態（作物・従業員・資材）をマスターに記憶させる
         saveCurrentStrategies();
 
         gameState.year += 1;
 
-        // 保存された状態を引き継いでUIを再構築する
         generateLandStrategyUI(); 
         updateSetupFinancialBanner(); 
 
         gameContainer.classList.add("hidden");
         setupScreen.classList.remove("hidden");
+
+        // 🌟 新しい年度の画面に戻った際、グラフを最新版に更新
+        setTimeout(renderFinancialChart, 50);
     }
 });
 
@@ -791,4 +808,117 @@ function showFinalResult() {
         resultRankElement.textContent = "📉 ランクＣ：破産寸前・赤字経営";
         resultCommentElement.textContent = `残念…！リソースを分散させすぎて、特定の土地の投資（人件費・資材費）が回収できませんでした。次はコスト配分を意識してみましょう。`;
     }
+}
+
+// 🌟【新設】棒（費用・収益）と折れ線（資金残高）を融合した「複合経営ダッシュボードグラフ」
+let financialChartInstance = null;
+
+function renderFinancialChart() {
+    const ctx = document.getElementById('financial-chart');
+    if (!ctx) return;
+
+    // グラフの桁が大きくなりすぎないよう、金額データを「万単位」に補正して配列を作成
+    const labels = gameState.history.map(h => h.year === 0 ? "初期" : `第${h.year}年`);
+    const moneyData = gameState.history.map(h => Math.round(h.money / 10000));
+    const expenseData = gameState.history.map(h => Math.round(h.expense / 10000));
+    const revenueData = gameState.history.map(h => Math.round(h.revenue / 10000));
+
+    // 既存のグラフがあれば一度破棄（上書きエラー防止）
+    if (financialChartInstance) {
+        financialChartInstance.destroy();
+    }
+
+    // 📊 複合グラフの生成（Bar と Line のハイブリッド）
+    financialChartInstance = new Chart(ctx, {
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    // 📈 1. 資金残高（プライマリ視点：折れ線グラフ）
+                    type: 'line',
+                    label: '資金残高(万)',
+                    data: moneyData,
+                    borderColor: '#1e40af',       // 濃い青
+                    backgroundColor: '#1e40af',
+                    borderWidth: 3,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    yAxisID: 'yMoney',            // 資金用の右側目盛に紐付け
+                    order: 1                      // 折れ線を一番手前に描画
+                },
+                {
+                    // 📊 2. 本年収益（セカンダリ視点：棒グラフ）
+                    type: 'bar',
+                    label: '本年収益(万)',
+                    data: revenueData,
+                    backgroundColor: '#16a34a',   // 緑
+                    borderColor: '#16a34a',
+                    borderWidth: 1,
+                    yAxisID: 'yFlow',             // 収支用の左側目盛に紐付け
+                    order: 2
+                },
+                {
+                    // 📊 3. 本年費用（セカンダリ視点：棒グラフ）
+                    type: 'bar',
+                    label: '本年費用(万)',
+                    data: expenseData,
+                    backgroundColor: '#dc2626',   // 赤
+                    borderColor: '#dc2626',
+                    borderWidth: 1,
+                    yAxisID: 'yFlow',             // 収支用の左側目盛に紐付け
+                    order: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 10,
+                        font: { size: 9 },
+                        padding: 4
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                // 💡 左側のY軸：当期の費用・収益フロー用（0からスタート）
+                yFlow: {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '本年収支 (万円)',
+                        font: { size: 8 }
+                    },
+                    ticks: { font: { size: 8 } },
+                    grid: { color: '#e2e8f0' }
+                },
+                // 💡 右側のY軸：ストック資産（資金残高）用
+                yMoney: {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: false, // 1億円付近の微細な増減を見えやすくするため自動調整
+                    title: {
+                        display: true,
+                        text: '総資金残高 (万円)',
+                        font: { size: 8 }
+                    },
+                    ticks: { font: { size: 8 } },
+                    grid: { display: false } // グリッド線が重なって見づらくなるのを防ぐ
+                },
+                x: {
+                    ticks: { font: { size: 9 } },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 }
