@@ -65,7 +65,7 @@ const CROP_MASTER = [
         desc: "難易度Bの特殊作物。栽培は極めて難しいですが、10万円という最高の販売価格を誇ります。"
     },
     {
-        id: "japanese parsley ",
+        id: "japanese_parsley",
         name: "せり",
         difficulty: "A",      // 難易度A（PDF表の「ブランド」列に対応）
         yieldPerUnit: 240,   // 収量: 240kg

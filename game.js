@@ -45,6 +45,19 @@ const sumCumRevenue = document.getElementById("sum-cum-revenue");
 
 let currentYearPlannedProfitSum = 0;
 
+// 資材コストをASSET_MASTERから取得するヘルパー関数（ハードコードを廃止）
+function getAssetCost(assetId) {
+    const asset = ASSET_MASTER.find(a => a.id === assetId);
+    return asset ? asset.cost : 0;
+}
+
+// UIラベル用：資材コストを万円表示に変換
+function getAssetCostLabel(assetId) {
+    const cost = getAssetCost(assetId);
+    if (cost === 0) return "無料";
+    return `＋${(cost / 10000).toLocaleString()}万`;
+}
+
 // --- 3. UIの動的生成ロジック ---
 function generateLandStrategyUI() {
     const cardCount = gameState.currentLand.totalCards; 
@@ -126,12 +139,12 @@ function generateLandStrategyUI() {
                         </div>
                         <label style="margin-top: 2px;">🛠️ 農業資材・施設（最大3つまで）:</label>
                         <div class="asset-mini-grid">
-                            <label class="asset-label"><input type="checkbox" class="asset-machinery" ${hasMachinery ? "checked" : ""} value="machinery" onchange="handleAssetExclusion(this, ${i}, 'machinery')">🚜高性能農機 (＋150万)</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-house" ${hasGreenhouse ? "checked" : ""} value="greenhouse" onchange="handleAssetExclusion(this, ${i}, 'greenhouse')">🏠ハウス施設 (＋400万)</label>
-                            <label class="asset-label" id="label-it-${i}" ${itLabelStyle}><input type="checkbox" class="asset-it" ${itCheckboxAttr} ${isItSavedChecked} value="it_system" onchange="handleAssetExclusion(this, ${i}, 'it_system')">💻ITシステム (＋200万)</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-pesticide" ${hasPesticide ? "checked" : ""} value="pesticide" onchange="handleAssetExclusion(this, ${i}, 'pesticide')">🧪特定農薬 (＋50万)</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-fertilizer" ${hasFertilizer ? "checked" : ""} value="fertilizer" onchange="handleAssetExclusion(this, ${i}, 'fertilizer')">🧪化学肥料 (＋50万)</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-organic" ${hasOrganic ? "checked" : ""} value="organic" onchange="handleAssetExclusion(this, ${i}, 'organic')">🌿 有機栽培資材 (＋100万)</label>
+                            <label class="asset-label"><input type="checkbox" class="asset-machinery" ${hasMachinery ? "checked" : ""} value="machinery" onchange="handleAssetExclusion(this, ${i}, 'machinery')">🚜高性能農機 (${getAssetCostLabel("machinery")})</label>
+                            <label class="asset-label"><input type="checkbox" class="asset-house" ${hasGreenhouse ? "checked" : ""} value="greenhouse" onchange="handleAssetExclusion(this, ${i}, 'greenhouse')">🏠ハウス施設 (${getAssetCostLabel("greenhouse")})</label>
+                            <label class="asset-label" id="label-it-${i}" ${itLabelStyle}><input type="checkbox" class="asset-it" ${itCheckboxAttr} ${isItSavedChecked} value="it_system" onchange="handleAssetExclusion(this, ${i}, 'it_system')">💻ITシステム (${getAssetCostLabel("it_system")})</label>
+                            <label class="asset-label"><input type="checkbox" class="asset-pesticide" ${hasPesticide ? "checked" : ""} value="pesticide" onchange="handleAssetExclusion(this, ${i}, 'pesticide')">🧪特定農薬 (${getAssetCostLabel("pesticide")})</label>
+                            <label class="asset-label"><input type="checkbox" class="asset-fertilizer" ${hasFertilizer ? "checked" : ""} value="fertilizer" onchange="handleAssetExclusion(this, ${i}, 'fertilizer')">🧪化学肥料 (${getAssetCostLabel("fertilizer")})</label>
+                            <label class="asset-label"><input type="checkbox" class="asset-organic" ${hasOrganic ? "checked" : ""} value="organic" onchange="handleAssetExclusion(this, ${i}, 'organic')">🌿 有機栽培資材 (${getAssetCostLabel("organic")})</label>
                         </div>
                     </div>
                 </div>
@@ -250,13 +263,13 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     else if (cropId === "japanese_parsley") seedCost = 8000;
 
     let assetCost = 0;
-    if (card.querySelector(".asset-machinery")?.checked) assetCost += 1500000;
-    if (card.querySelector(".asset-house")?.checked) assetCost += 4000000;
+    if (card.querySelector(".asset-machinery")?.checked) assetCost += getAssetCost("machinery");
+    if (card.querySelector(".asset-house")?.checked) assetCost += getAssetCost("greenhouse");
     const itCheckbox = card.querySelector(".asset-it");
-    if (itCheckbox?.checked && !itCheckbox.disabled) assetCost += 2000000;
-    if (card.querySelector(".asset-pesticide")?.checked) assetCost += 500000;
-    if (card.querySelector(".asset-fertilizer")?.checked) assetCost += 500000;
-    if (card.querySelector(".asset-organic")?.checked) assetCost += 1000000;
+    if (itCheckbox?.checked && !itCheckbox.disabled) assetCost += getAssetCost("it_system");
+    if (card.querySelector(".asset-pesticide")?.checked) assetCost += getAssetCost("pesticide");
+    if (card.querySelector(".asset-fertilizer")?.checked) assetCost += getAssetCost("fertilizer");
+    if (card.querySelector(".asset-organic")?.checked) assetCost += getAssetCost("organic");
 
     let cardTotalInvestment = seedCost + laborCost + assetCost + landCostBase;
     let estimatedProfit = Math.round(estimatedRevenue - cardTotalInvestment); 
@@ -366,12 +379,12 @@ function updateSetupFinancialBanner() {
             if (emp) totalInvestment += emp.cost;
         });
 
-        if (card.querySelector(".asset-machinery")?.checked) totalInvestment += 1500000;
-        if (card.querySelector(".asset-house")?.checked) totalInvestment += 4000000;
-        if (card.querySelector(".asset-it")?.checked) totalInvestment += 2000000;
-        if (card.querySelector(".asset-pesticide")?.checked) totalInvestment += 500000;
-        if (card.querySelector(".asset-fertilizer")?.checked) totalInvestment += 500000;
-        if (card.querySelector(".asset-organic")?.checked) totalInvestment += 1000000;
+        if (card.querySelector(".asset-machinery")?.checked) totalInvestment += getAssetCost("machinery");
+        if (card.querySelector(".asset-house")?.checked) totalInvestment += getAssetCost("greenhouse");
+        if (card.querySelector(".asset-it")?.checked) totalInvestment += getAssetCost("it_system");
+        if (card.querySelector(".asset-pesticide")?.checked) totalInvestment += getAssetCost("pesticide");
+        if (card.querySelector(".asset-fertilizer")?.checked) totalInvestment += getAssetCost("fertilizer");
+        if (card.querySelector(".asset-organic")?.checked) totalInvestment += getAssetCost("organic");
 
         if (cropId === "cabbage") totalInvestment += 5000;
         else if (cropId === "corn") totalInvestment += 10000;
@@ -438,23 +451,17 @@ beginBusinessBtn.addEventListener("click", () => {
         const marketObj = MARKET_MASTER.find(m => m.id === marketId);
 
         const workerSelects = card.querySelectorAll(".land-worker-select");
-        let employees = [];
-        workerSelects.forEach(sel => employees.push(EMPLOYEE_MASTER.find(e => e.id === sel.value)));
+        const employees = [...workerSelects]
+            .map(sel => EMPLOYEE_MASTER.find(e => e.id === sel.value))
+            .filter(Boolean);
 
-        let assets = [];
         const checkedBoxes = card.querySelectorAll('input[type="checkbox"]:checked');
-        checkedBoxes.forEach(box => assets.push(ASSET_MASTER.find(a => a.id === box.value)));
+        const assets = [...checkedBoxes]
+            .map(box => ASSET_MASTER.find(a => a.id === box.value))
+            .filter(Boolean);
 
         employees.forEach(e => totalInvestment += e.cost);
-        
-        checkedBoxes.forEach(box => {
-            if (box.value === "machinery") totalInvestment += 1500000;
-            if (box.value === "greenhouse") totalInvestment += 4000000;
-            if (box.value === "it_system") totalInvestment += 2000000;
-            if (box.value === "pesticide") totalInvestment += 500000;
-            if (box.value === "fertilizer") totalInvestment += 500000;
-            if (box.value === "organic") totalInvestment += 1000000;
-        });
+        assets.forEach(asset => totalInvestment += asset.cost);
         
         if (cropId === "cabbage") totalInvestment += 5000;
         else if (cropId === "corn") totalInvestment += 10000;
@@ -526,12 +533,12 @@ beginBusinessBtn.addEventListener("click", () => {
         else if (cropId === "japanese_parsley") seedCost = 8000;
         
         let assetCost = 0;
-        if (c.querySelector(".asset-machinery")?.checked) assetCost += 1500000;
-        if (c.querySelector(".asset-house")?.checked) assetCost += 4000000;
-        if (c.querySelector(".asset-it")?.checked) assetCost += 2000000;
-        if (c.querySelector(".asset-pesticide")?.checked) assetCost += 500000;
-        if (c.querySelector(".asset-fertilizer")?.checked) assetCost += 500000;
-        if (c.querySelector(".asset-organic")?.checked) assetCost += 1000000;
+        if (c.querySelector(".asset-machinery")?.checked) assetCost += getAssetCost("machinery");
+        if (c.querySelector(".asset-house")?.checked) assetCost += getAssetCost("greenhouse");
+        if (c.querySelector(".asset-it")?.checked) assetCost += getAssetCost("it_system");
+        if (c.querySelector(".asset-pesticide")?.checked) assetCost += getAssetCost("pesticide");
+        if (c.querySelector(".asset-fertilizer")?.checked) assetCost += getAssetCost("fertilizer");
+        if (c.querySelector(".asset-organic")?.checked) assetCost += getAssetCost("organic");
         
         let totalInv = seedCost + lCost + assetCost + landCostBase;
         currentYearPlannedProfitSum += Math.round(estRev - totalInv);
@@ -595,6 +602,17 @@ endYearBtn.addEventListener("click", () => {
         const crop = strat.crop;
         const market = strat.market;
         const assets = strat.assets;
+
+        // crop または market が未定義の場合はスキップ（ID不一致バグの安全網）
+        if (!crop || !market) {
+            dashboardTableBody.innerHTML += `
+                <tr>
+                    <td style="font-weight:bold;">🗺️ ${index + 1}枚目</td>
+                    <td colspan="6" style="color:#dc2626; font-weight:bold;">⚠️ 作物または販売先のデータが見つかりません</td>
+                </tr>
+            `;
+            return;
+        }
 
         const hasPesticide = assets.some(a => a.id === "pesticide");
         const hasFertilizer = assets.some(a => a.id === "fertilizer");
