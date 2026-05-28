@@ -3,12 +3,11 @@
 let gameState = {
     playerName: "",
     year: 1,
-    money: 100000000,      // 初期資金1億円
-    cumExpenses: 0,       // 累計費用
-    cumRevenue: 0,        // 累計収益
+    money: 100000000,
+    cumExpenses: 0,
+    cumRevenue: 0,
     currentLand: null,
     landStrategies: [],
-    // グラフ用の履歴データ（0年目の初期状態をあらかじめセット）
     history: [
         { year: 0, money: 100000000, expense: 0, revenue: 0 }
     ]
@@ -37,13 +36,16 @@ const currentYearElement = document.getElementById("current-year");
 const finalMoneyElement = document.getElementById("final-money");
 const resultRankElement = document.getElementById("result-rank");
 const resultCommentElement = document.getElementById("result-comment");
+const finalFinancialChartElement = document.getElementById("final-financial-chart");
 
 const setupYearDisplay = document.getElementById("setup-year-display");
 const sumCurrentMoney = document.getElementById("sum-current-money");
 const sumCumExpense = document.getElementById("sum-cum-expense");
 const sumCumRevenue = document.getElementById("sum-cum-revenue");
 
-// --- 3. UIの動的生成ロジック（前年の記憶データを初期値として100%引き継ぐ） ---
+let currentYearPlannedProfitSum = 0;
+
+// --- 3. UIの動的生成ロジック ---
 function generateLandStrategyUI() {
     const cardCount = gameState.currentLand.totalCards; 
     const yearKey = "year" + gameState.year;
@@ -52,45 +54,48 @@ function generateLandStrategyUI() {
     landCardsContainer.innerHTML = ""; 
 
     for (let i = 1; i <= cardCount; i++) {
-        // 💡 配列のインデックス（0から始まる）に合わせて前年の記憶データを取得
         let saved = gameState.landStrategies[i - 1] || null;
 
-        // 1. 従業員セレクトの初期値を判定（記憶があればそれを再現、なければ初期値）
         let workerSelectsHtml = "";
         for (let w = 1; w <= reqWorkers; w++) {
             let savedWorkerId = (saved && saved.employeeIds && saved.employeeIds[w - 1]) ? saved.employeeIds[w - 1] : "beginner";
-            
-            // 1年目の初期配置ルール（2人目は経験者、3人目はベテラン）も記憶がなければ維持
             if (!saved) {
                 if (w === 2) savedWorkerId = "experienced";
                 if (w === 3) savedWorkerId = "veteran";
             }
+            
+            // 安全な変数にしてから埋め込む
+            const isBeginner = savedWorkerId === 'beginner' ? 'selected' : '';
+            const isExperienced = savedWorkerId === 'experienced' ? 'selected' : '';
+            const isVeteran = savedWorkerId === 'veteran' ? 'selected' : '';
 
             workerSelectsHtml += `
                 <select class="land-worker-select" data-land-idx="${i}" onchange="calculateLiveCardCost(${i})">
-                    <option value="beginner" ${savedWorkerId === 'beginner' ? 'selected' : ''}>スタッフ${w}:初心者 (200万)</option>
-                    <option value="experienced" ${savedWorkerId === 'experienced' ? 'selected' : ''}>スタッフ${w}:経験者 (600万)</option>
-                    <option value="veteran" ${savedWorkerId === 'veteran' ? 'selected' : ''}>スタッフ${w}:ベテラン (800万)</option>
+                    <option value="beginner" ${isBeginner}>スタッフ${w}:初心者 (200万)</option>
+                    <option value="experienced" ${isExperienced}>スタッフ${w}:経験者 (600万)</option>
+                    <option value="veteran" ${isVeteran}>スタッフ${w}:ベテラン (800万)</option>
                 </select>
             `;
         }
 
-        // 2. 作物と販売先の記憶状態を事前判定（記憶がなければ初期値を割り当て）
         const savedCropId = saved ? saved.cropId : (i === 1 ? "tomato" : "hakusai");
         const savedMarketId = saved ? saved.marketId : "JA";
 
-        // 3. 各種資材のチェック記憶状態を事前判定
         const hasMachinery = saved && saved.assetIds ? saved.assetIds.includes("machinery") : false;
         const hasGreenhouse = saved && saved.assetIds ? saved.assetIds.includes("greenhouse") : false;
-        const hasITSystem = saved && saved.assetIds ? saved.assetIds.includes("it_system") : false;
         const hasPesticide = saved && saved.assetIds ? saved.assetIds.includes("pesticide") : false;
         const hasFertilizer = saved && saved.assetIds ? saved.assetIds.includes("fertilizer") : false;
         const hasOrganic = saved && saved.assetIds ? saved.assetIds.includes("organic") : false;
+        
+        // ITシステムの制限ロジックを安全に分解
+        const hasITSystem = saved && saved.assetIds ? saved.assetIds.includes("it_system") : false;
+        const itCheckboxAttr = hasITSystem ? "checked disabled" : "";
+        const itLabelStyle = hasITSystem ? "style='color: #64748b; font-weight: bold; background: #f1f5f9; padding: 2px 5px; border-radius:3px; cursor: not-allowed;'" : "";
+        const isItSavedChecked = (!hasITSystem && saved && saved.assetIds && saved.assetIds.includes("it_system")) ? "checked" : "";
 
         const cardHtml = `
             <div class="land-strategy-card" data-idx="${i}">
                 <h4>🗺️ ${i}枚目の農地 個別経営戦略</h4>
-                
                 <div class="card-inner-flex">
                     <div class="land-strategy-card-left">
                         <label>🌾 作付する作物:</label>
@@ -104,7 +109,6 @@ function generateLandStrategyUI() {
                             <option value="daikon" ${savedCropId === 'daikon' ? 'selected' : ''}>🥕 B:大根 (16,000円)</option>
                             <option value="cabbage" ${savedCropId === 'cabbage' ? 'selected' : ''}>🥬 C:キャベツ (5,000円)</option>
                         </select>
-
                         <label style="margin-top: 5px;">🏪 出荷・販売先:</label>
                         <select class="land-market-select" onchange="calculateLiveCardCost(${i})">
                             <option value="JA" ${savedMarketId === 'JA' ? 'selected' : ''}>農協 [全作物OK]</option>
@@ -115,31 +119,24 @@ function generateLandStrategyUI() {
                             <option value="sixth_industry" ${savedMarketId === 'sixth_industry' ? 'selected' : ''}>六次産業化 [リスク有]</option>
                         </select>
                     </div>
-
                     <div class="land-strategy-card-right">
                         <label>👤 配置従業員（必要人数: ${reqWorkers}名）:</label>
                         <div class="worker-row-container">
                             ${workerSelectsHtml}
                         </div>
-
                         <label style="margin-top: 2px;">🛠️ 農業資材・施設（最大3つまで）:</label>
                         <div class="asset-mini-grid">
                             <label class="asset-label"><input type="checkbox" class="asset-machinery" ${hasMachinery ? "checked" : ""} value="machinery" onchange="handleAssetExclusion(this, ${i}, 'machinery')">🚜高性能農機 (＋150万)</label>
                             <label class="asset-label"><input type="checkbox" class="asset-house" ${hasGreenhouse ? "checked" : ""} value="greenhouse" onchange="handleAssetExclusion(this, ${i}, 'greenhouse')">🏠ハウス施設 (＋400万)</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-it" ${hasITSystem ? "checked" : ""} value="it_system" onchange="handleAssetExclusion(this, ${i}, 'it_system')">💻ITシステム (＋200万)</label>
+                            <label class="asset-label" id="label-it-${i}" ${itLabelStyle}><input type="checkbox" class="asset-it" ${itCheckboxAttr} ${isItSavedChecked} value="it_system" onchange="handleAssetExclusion(this, ${i}, 'it_system')">💻ITシステム (＋200万)</label>
                             <label class="asset-label"><input type="checkbox" class="asset-pesticide" ${hasPesticide ? "checked" : ""} value="pesticide" onchange="handleAssetExclusion(this, ${i}, 'pesticide')">🧪特定農薬 (＋50万)</label>
                             <label class="asset-label"><input type="checkbox" class="asset-fertilizer" ${hasFertilizer ? "checked" : ""} value="fertilizer" onchange="handleAssetExclusion(this, ${i}, 'fertilizer')">🧪化学肥料 (＋50万)</label>
                             <label class="asset-label"><input type="checkbox" class="asset-organic" ${hasOrganic ? "checked" : ""} value="organic" onchange="handleAssetExclusion(this, ${i}, 'organic')">🌿 有機栽培資材 (＋100万)</label>
                         </div>
                     </div>
                 </div>
-
-                <table class="live-simulation-table" id="simulation-table-${i}">
-                    </table>
-
-                <div class="land-cost-counter" id="card-cost-counter-${i}">
-                    💰 この農地の投資小計: 0 円
-                </div>
+                <table class="live-simulation-table" id="simulation-table-${i}"></table>
+                <div class="land-cost-counter" id="card-cost-counter-${i}">💰 この農地の投資小計: 0 円</div>
             </div>
         `;
         landCardsContainer.insertAdjacentHTML("beforeend", cardHtml);
@@ -147,7 +144,7 @@ function generateLandStrategyUI() {
     }
 }
 
-// 💡 リアルタイム営農シミュレーター＆コスト合算システム（エラー完全解消版）
+// 💡 リアルタイム営農シミュレーター＆コスト合算システム
 window.calculateLiveCardCost = function(cardOrIdx) {
     if (!cardOrIdx) return;
 
@@ -161,22 +158,21 @@ window.calculateLiveCardCost = function(cardOrIdx) {
 
     const cropId = card.querySelector(".land-crop-select").value;
     const landCostBase = gameState.currentLand ? gameState.currentLand.cost : 0;
-
     const crop = CROP_MASTER.find(c => c.id === cropId);
     let baseYieldPerUnit = crop ? crop.yieldPerUnit : 0;
 
     let landPower = 1.0;
-    if (gameState.currentLand && gameState.currentLand.id === "suwa") landPower = 1.2;
-    if (gameState.currentLand && gameState.currentLand.id === "matsumoto") landPower = 1.5;
+    if (gameState.currentLand && gameState.currentLand.power) {
+        const yearKey = "year" + gameState.year;
+        landPower = gameState.currentLand.power[yearKey] || 1.0;
+    }
 
     const marketId = card.querySelector(".land-market-select").value;
     let basePricePerKg = 0; 
-    let marketName = "農協";
     let saleLimitText = "上限なし";
 
     const marketObj = MARKET_MASTER.find(m => m.id === marketId);
     if (marketObj) {
-        marketName = marketObj.name;
         basePricePerKg = marketObj.prices[cropId] || 0; 
     }
 
@@ -199,33 +195,26 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     if (cropId === "hakusai" || cropId === "artichoke") cropRankKey = "S";
 
     const hasITSystem = card.querySelector(".asset-it")?.checked;
-
     const workerSelects = card.querySelectorAll(".land-worker-select");
+    
     workerSelects.forEach(sel => {
         workerCount++;
         const empData = EMPLOYEE_MASTER.find(e => e.id === sel.value);
         if (empData) {
             laborCost += empData.cost; 
             let workerRate = empData.rates[cropRankKey];
-
             if (hasITSystem && empData.needIT[cropRankKey]) {
                 workerRate = 1.0;
             }
-
             if (workerRate === 0.0) {
                 techShortage = true;
             }
-
             totalWorkerYieldMultiplier += workerRate;
         }
     });
 
-    if (techShortage) {
-        totalWorkerYieldMultiplier = 0;
-    }
-
+    if (techShortage) totalWorkerYieldMultiplier = 0;
     let avgWorkerMultiplier = workerCount > 0 ? (totalWorkerYieldMultiplier / workerCount) : 0;
-
     let planYield = baseYieldPerUnit * landPower * avgWorkerMultiplier; 
     
     let techStatusText = "<span style='color:#16a34a; font-weight:bold;'>合格</span>";
@@ -263,18 +252,21 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     let assetCost = 0;
     if (card.querySelector(".asset-machinery")?.checked) assetCost += 1500000;
     if (card.querySelector(".asset-house")?.checked) assetCost += 4000000;
-    if (card.querySelector(".asset-it")?.checked) assetCost += 2000000;
+    const itCheckbox = card.querySelector(".asset-it");
+    if (itCheckbox?.checked && !itCheckbox.disabled) assetCost += 2000000;
     if (card.querySelector(".asset-pesticide")?.checked) assetCost += 500000;
     if (card.querySelector(".asset-fertilizer")?.checked) assetCost += 500000;
     if (card.querySelector(".asset-organic")?.checked) assetCost += 1000000;
 
-    // 💡 投資小計に土地代を合算する（重複エラーが出ないようにここで1回だけ宣言）
     let cardTotalInvestment = seedCost + laborCost + assetCost + landCostBase;
-    
     let estimatedProfit = Math.round(estimatedRevenue - cardTotalInvestment); 
 
     const idx = card.getAttribute("data-idx");
     const simTable = document.getElementById(`simulation-table-${idx}`);
+    
+    // エラー防止のため、計算結果の色を安全に変数の外に出す
+    const profitColor = estimatedProfit >= 0 ? '#16a34a' : '#dc2626';
+
     if (simTable) {
         simTable.innerHTML = `
             <thead>
@@ -286,22 +278,19 @@ window.calculateLiveCardCost = function(cardOrIdx) {
             </thead>
             <tbody>
                 <tr class="row-status"><td>従業員技術判定</td><td class="text-center">-</td><td class="text-right">${techStatusText}</td></tr>
-                
                 <tr class="row-revenue-header"><td>売上</td><td class="text-center">円</td><td class="text-right">${estimatedRevenue.toLocaleString()}</td></tr>
                 <tr><td>　販売価格 (単価)</td><td class="text-center">円</td><td class="text-right">${basePricePerKg.toLocaleString()}</td></tr>
-                <tr><td>　計画収穫量 (標準収量×土地パワー×従業員制限)</td><td class="text-center">kg</td><td class="text-right">${Math.round(planYield)}</td></tr>
+                <tr><td>　計画収穫量</td><td class="text-center">kg</td><td class="text-right">${Math.round(planYield)}</td></tr>
                 <tr><td>　　土地パワー</td><td class="text-center">倍</td><td class="text-right">${landPower}</td></tr>
                 <tr><td>　　標準収穫量ベース</td><td class="text-center">kg</td><td class="text-right">${baseYieldPerUnit}</td></tr>
                 <tr><td>　　従業員の収穫可能量制限</td><td class="text-center">倍</td><td class="text-right">${avgWorkerMultiplier.toFixed(1)} 倍</td></tr>
                 <tr><td>　販売上限制限</td><td class="text-center">kg</td><td class="text-right">${saleLimitText}</td></tr>
-
                 <tr class="row-expense-header"><td>投資小計 (費用)</td><td class="text-center">円</td><td class="text-right">${cardTotalInvestment.toLocaleString()}</td></tr>
                 <tr><td>　土地の貸借料</td><td class="text-center">円</td><td class="text-right">${landCostBase.toLocaleString()}</td></tr>
                 <tr><td>　種苗・苗木費</td><td class="text-center">円</td><td class="text-right">${seedCost.toLocaleString()}</td></tr>
                 <tr><td>　従業員人件費</td><td class="text-center">円</td><td class="text-right">${laborCost.toLocaleString()}</td></tr>
                 <tr><td>　設備・IT投資費</td><td class="text-center">円</td><td class="text-right">${assetCost.toLocaleString()}</td></tr>
-
-                <tr class="row-profit-header"><td>見込利益 (売上－投資小計)</td><td class="text-center">円</td><td class="text-right" style="color: ${estimatedProfit >= 0 ? '#16a34a' : '#dc2626'}; font-weight:bold;">${estimatedProfit.toLocaleString()}</td></tr>
+                <tr class="row-profit-header"><td>見込利益 (売上－投資小計)</td><td class="text-center">円</td><td class="text-right" style="color: ${profitColor}; font-weight:bold;">${estimatedProfit.toLocaleString()}</td></tr>
             </tbody>
         `;
     }
@@ -316,7 +305,6 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     }
 };
 
-// 🌟【新設】排他制御 ＆「最大3つまで」の上限制限バリデーションの完全連動
 window.handleAssetExclusion = function(element, cardIdx, type) {
     const card = document.querySelector(`.land-strategy-card[data-idx="${cardIdx}"]`);
     if (!card) return;
@@ -325,15 +313,13 @@ window.handleAssetExclusion = function(element, cardIdx, type) {
     const fBox = card.querySelector(".asset-fertilizer");
     const oBox = card.querySelector(".asset-organic");
 
-    // 1. 【制限ルール】最大3つまでのチェック制限バリデーションを先に判定
     const allChecked = card.querySelectorAll('input[type="checkbox"]:checked');
     if (allChecked.length > 3) {
         alert("🚨 【資材制限ルール】\n1つの農地に導入できる農業資材・施設は「最大3つまで」です！");
-        element.checked = false; // 4つ目に選んだチェックをその場で強制解除
-        return; // 処理をここで終了して計算に進ませない
+        element.checked = false; 
+        return; 
     }
 
-    // 2. 【排他ルール】有機栽培と化学系の排他制御ロジック
     if (type === "organic" && oBox.checked) {
         pBox.checked = false; 
         fBox.checked = false;
@@ -341,35 +327,26 @@ window.handleAssetExclusion = function(element, cardIdx, type) {
         oBox.checked = false;
     }
 
-    // 💡【新設】有機栽培資材がON、かつ農薬・肥料がOFFの時だけ「自然派ストア」を解放する制御
     const marketSel = card.querySelector(".land-market-select");
     if (marketSel) {
         const naturalStoreOption = marketSel.querySelector('option[value="natural_store"]');
         if (naturalStoreOption) {
-            // 🌟 条件：有機栽培資材(oBox)にチェックが入っており、かつ農薬・肥料がどちらもOFFであること
             const isOrganicCertified = oBox.checked && !pBox.checked && !fBox.checked;
-
             if (isOrganicCertified) {
-                // 条件クリア時のみ自然派ストアを解放
                 naturalStoreOption.disabled = false;
             } else {
-                // 有機資材が外れている、または農薬・肥料が入っている場合はロック
                 naturalStoreOption.disabled = true; 
-                
-                // もし今まさに「自然派ストア」が選ばれてしまっていたら、強制的に「農協」に戻す
                 if (marketSel.value === "natural_store") {
                     marketSel.value = "JA";
-                    alert("⚠️ 【出荷制限ルール】\n「自然派ストア」への出荷には、🌿有機栽培資材の導入（かつ特定農薬・化学肥料の不使用）が必須条件です。自動的に「農協」に切り替わりました。");
+                    alert("⚠️ 【出荷制限ルール】\n「自然派ストア」への出荷には、🌿有機栽培資材の導入が必須です。自動的に「農協」に切り替わりました。");
                 }
             }
         }
     }
 
-    // 3. 制限をクリアした状態の正しい資材で、リアルタイムシミュレーター表を再計算
     calculateLiveCardCost(cardIdx);
 };
 
-// 財務バナー更新（全農地カードの選択状態をリアルタイムにスキャンして合算）
 function updateSetupFinancialBanner() {
     if (!gameState.currentLand) return;
 
@@ -377,25 +354,18 @@ function updateSetupFinancialBanner() {
     sumCumExpense.textContent = `${gameState.cumExpenses.toLocaleString()} 円`;
     sumCumRevenue.textContent = `${gameState.cumRevenue.toLocaleString()} 円`;
 
-    // 🌟 1. 初期値を0円からスタートし、土地代も各カードごとに1枚ずつ合算する
     let totalInvestment = 0; 
-    
-    // 🌟 2. 画面上のすべての農地カードをループして、土地賃料・人件費・資材費・苗代を正確に合算
     const cards = document.querySelectorAll(".land-strategy-card");
     cards.forEach(card => {
-        // 【追加】土地1枚ずつの年間賃料を合算
         totalInvestment += gameState.currentLand.cost;
-
         const cropId = card.querySelector(".land-crop-select")?.value;
         if (!cropId) return;
 
-        // 配置された従業員の人件費を合算
         card.querySelectorAll(".land-worker-select").forEach(sel => {
             const emp = EMPLOYEE_MASTER.find(e => e.id === sel.value);
             if (emp) totalInvestment += emp.cost;
         });
 
-        // 導入された農業資材の費用を画面の表示金額基準で合算
         if (card.querySelector(".asset-machinery")?.checked) totalInvestment += 1500000;
         if (card.querySelector(".asset-house")?.checked) totalInvestment += 4000000;
         if (card.querySelector(".asset-it")?.checked) totalInvestment += 2000000;
@@ -403,7 +373,6 @@ function updateSetupFinancialBanner() {
         if (card.querySelector(".asset-fertilizer")?.checked) totalInvestment += 500000;
         if (card.querySelector(".asset-organic")?.checked) totalInvestment += 1000000;
 
-        // 作物ごとの苗代コストを合算
         if (cropId === "cabbage") totalInvestment += 5000;
         else if (cropId === "corn") totalInvestment += 10000;
         else if (cropId === "strawberry") totalInvestment += 12000;
@@ -414,7 +383,6 @@ function updateSetupFinancialBanner() {
         else if (cropId === "japanese_parsley") totalInvestment += 8000;
     });
 
-    // 🌟 3. 現在の資金から投資見込額を引いた「実質残高」と「初期資本金比」を計算
     const estimatedMoney = gameState.money - totalInvestment;
     const netChange = estimatedMoney - 100000000;
     
@@ -458,15 +426,11 @@ let currentYearStartMoney = 0;
 
 beginBusinessBtn.addEventListener("click", () => {
     gameState.landStrategies = [];
-    // 💡【修正】初期値を0円にし、各土地のループ内で1枚ずつ賃料を徴収する
     let totalInvestment = 0; 
 
     const cards = document.querySelectorAll(".land-strategy-card");
-    
     for (let card of cards) {
-        // 【追加】各農地ごとに土地1枚ずつの年間賃料を正確に合算
         totalInvestment += gameState.currentLand.cost;
-
         const cropId = card.querySelector(".land-crop-select").value;
         const marketId = card.querySelector(".land-market-select").value;
         
@@ -475,19 +439,14 @@ beginBusinessBtn.addEventListener("click", () => {
 
         const workerSelects = card.querySelectorAll(".land-worker-select");
         let employees = [];
-        workerSelects.forEach(sel => {
-            employees.push(EMPLOYEE_MASTER.find(e => e.id === sel.value));
-        });
+        workerSelects.forEach(sel => employees.push(EMPLOYEE_MASTER.find(e => e.id === sel.value)));
 
         let assets = [];
         const checkedBoxes = card.querySelectorAll('input[type="checkbox"]:checked');
-        checkedBoxes.forEach(box => {
-            assets.push(ASSET_MASTER.find(a => a.id === box.value));
-        });
+        checkedBoxes.forEach(box => assets.push(ASSET_MASTER.find(a => a.id === box.value)));
 
         employees.forEach(e => totalInvestment += e.cost);
         
-        // 確定ボタンを押した際にも、画面の表示金額通りの資材コストを正確に徴収する
         checkedBoxes.forEach(box => {
             if (box.value === "machinery") totalInvestment += 1500000;
             if (box.value === "greenhouse") totalInvestment += 4000000;
@@ -497,7 +456,6 @@ beginBusinessBtn.addEventListener("click", () => {
             if (box.value === "organic") totalInvestment += 1000000;
         });
         
-        // 苗代コストの計算用補正
         if (cropId === "cabbage") totalInvestment += 5000;
         else if (cropId === "corn") totalInvestment += 10000;
         else if (cropId === "strawberry") totalInvestment += 12000;
@@ -514,6 +472,70 @@ beginBusinessBtn.addEventListener("click", () => {
             assets: assets
         });
     }
+
+    currentYearPlannedProfitSum = 0;
+    cards.forEach(c => {
+        const cropId = c.querySelector(".land-crop-select").value;
+        const landCostBase = gameState.currentLand ? gameState.currentLand.cost : 0;
+        const crop = CROP_MASTER.find(cr => cr.id === cropId);
+        let baseYieldPerUnit = crop ? crop.yieldPerUnit : 0;
+        
+        const yKey = "year" + gameState.year;
+        let lPower = gameState.currentLand ? gameState.currentLand.power[yKey] : 1.0;
+        
+        let lCost = 0; let wCount = 0; let tShortage = false; let tMultiplier = 0;
+        let cRank = "C";
+        if (["corn", "daikon"].includes(cropId)) cRank = "B";
+        if (["tomato", "strawberry", "japanese_parsley"].includes(cropId)) cRank = "A";
+        if (["hakusai", "artichoke"].includes(cropId)) cRank = "S";
+        const hasIT = c.querySelector(".asset-it")?.checked;
+        
+        c.querySelectorAll(".land-worker-select").forEach(sel => {
+            wCount++;
+            const empData = EMPLOYEE_MASTER.find(e => e.id === sel.value);
+            if (empData) {
+                lCost += empData.cost;
+                let wRate = empData.rates[cRank];
+                if (hasIT && empData.needIT[cRank]) wRate = 1.0;
+                if (wRate === 0.0) tShortage = true;
+                tMultiplier += wRate;
+            }
+        });
+        if (tShortage) tMultiplier = 0;
+        let avgM = wCount > 0 ? (tMultiplier / wCount) : 0;
+        let pYield = baseYieldPerUnit * lPower * avgM;
+        
+        const marketId = c.querySelector(".land-market-select").value;
+        let bPrice = 0;
+        const mObj = MARKET_MASTER.find(m => m.id === marketId);
+        if (mObj) bPrice = mObj.prices[cropId] || 0;
+        
+        let aSale = pYield;
+        if (marketId === "restaurant" && aSale > 200) aSale = 200;
+        if (marketId === "natural_store" && aSale > 250) aSale = 250;
+        let estRev = Math.round(aSale * bPrice);
+        
+        let seedCost = 0;
+        if (cropId === "cabbage") seedCost = 5000;
+        else if (cropId === "corn") seedCost = 10000;
+        else if (cropId === "strawberry") seedCost = 12000;
+        else if (cropId === "tomato") seedCost = 10000;
+        else if (cropId === "hakusai") seedCost = 8000;
+        else if (cropId === "artichoke") seedCost = 12000;
+        else if (cropId === "daikon") seedCost = 16000;
+        else if (cropId === "japanese_parsley") seedCost = 8000;
+        
+        let assetCost = 0;
+        if (c.querySelector(".asset-machinery")?.checked) assetCost += 1500000;
+        if (c.querySelector(".asset-house")?.checked) assetCost += 4000000;
+        if (c.querySelector(".asset-it")?.checked) assetCost += 2000000;
+        if (c.querySelector(".asset-pesticide")?.checked) assetCost += 500000;
+        if (c.querySelector(".asset-fertilizer")?.checked) assetCost += 500000;
+        if (c.querySelector(".asset-organic")?.checked) assetCost += 1000000;
+        
+        let totalInv = seedCost + lCost + assetCost + landCostBase;
+        currentYearPlannedProfitSum += Math.round(estRev - totalInv);
+    });
 
     if (gameState.money < totalInvestment) {
         alert("初期資金が足りません！投資を少し減らして再調整してください。");
@@ -535,7 +557,7 @@ beginBusinessBtn.addEventListener("click", () => {
     endYearBtn.classList.remove("hidden");
     document.getElementById("next-year-phase-btn").classList.add("hidden");
 
-    alert(`【第 ${gameState.year} 年目 全農地・投資確定！】\n本期の投資総額: ${(totalInvestment).toLocaleString()}円\nメイン画面で決算を行いましょう！`);
+    alert(`【第 ${gameState.year} 年目 全農地・投資確定！】\n本期の投資総額: ${(totalInvestment).toLocaleString()}円`);
 
     setupScreen.classList.add("hidden");
     gameContainer.classList.remove("hidden");
@@ -557,7 +579,7 @@ const stmtEndMoney = document.getElementById("stmt-end-money");
 endYearBtn.addEventListener("click", () => {
     const land = gameState.currentLand;
     const yearKey = "year" + gameState.year;
-    const landPower = land.power[yearKey]; 
+    const landPower = land.power[yearKey] || 1.0; 
 
     const globalEvent = GLOBAL_EVENTS[Math.floor(Math.random() * GLOBAL_EVENTS.length)];
     const localEvent = LOCAL_EVENTS[Math.floor(Math.random() * LOCAL_EVENTS.length)];
@@ -633,15 +655,11 @@ endYearBtn.addEventListener("click", () => {
             yieldRate *= 2;
         }
 
-        // // 💡 決算本番用の【仕様書完全準拠】ITシステム連動型・収穫量制限＆技術判定
         let finalTechShortage = false;
         let totalFinalMultiplier = 0;
         let finalWorkerCount = 0;
-
-        // 本番でこの農地にITシステムが導入されているかチェック
         const hasFinalIT = assets.some(a => a.id === "it_system");
 
-        // 作物のアルファベットランクを判定
         let finalCropRankKey = "C";
         if (["corn", "daikon"].includes(crop.id)) finalCropRankKey = "B";
         if (["tomato", "strawberry", "japanese_parsley"].includes(crop.id)) finalCropRankKey = "A";
@@ -649,36 +667,20 @@ endYearBtn.addEventListener("click", () => {
 
         strat.employees.forEach(e => {
             finalWorkerCount++;
-            
             const empData = EMPLOYEE_MASTER.find(emp => emp.id === e.id);
             if (empData) {
                 let workerRate = empData.rates[finalCropRankKey];
-
-                // 本番時における、ITシステムによる制限解除の反映
-                if (hasFinalIT && empData.needIT[finalCropRankKey]) {
-                    workerRate = 1.0;
-                }
-
-                // ITシステムでの補正を行ってもなお、作物を育てられない場合は全滅
-                if (workerRate === 0.0) {
-                    finalTechShortage = true;
-                }
-
+                if (hasFinalIT && empData.needIT[finalCropRankKey]) workerRate = 1.0;
+                if (workerRate === 0.0) finalTechShortage = true;
                 totalFinalMultiplier += workerRate;
             }
         });
 
-        // 1人でも育てられない人が残っていれば、収量倍率は0倍（全滅）
-        if (finalTechShortage) {
-            totalFinalMultiplier = 0;
-        }
-
+        if (finalTechShortage) totalFinalMultiplier = 0;
         let avgFinalMultiplier = finalWorkerCount > 0 ? (totalFinalMultiplier / finalWorkerCount) : 0;
-        
-        // 本番の収穫量 ＝ 基礎収量 × ランダムイベント倍率 × 従業員全体の平均収穫倍率
         let actualYieldKg = planYieldKg * yieldRate * avgFinalMultiplier;
-        let techShortageLabel = finalTechShortage ? " ⚠️技術不足で出荷不可" : "";
 
+        let techShortageLabel = finalTechShortage ? "⚠️技術不足で出荷不可" : "";
         let directStoreLotteryText = "";
 
         if (market.id === "direct_store") {
@@ -700,12 +702,23 @@ endYearBtn.addEventListener("click", () => {
         const yieldClass = actualYieldKg < planYieldKg ? "stat-down" : (actualYieldKg > planYieldKg ? "stat-up" : "");
         const priceClass = finalPricePerKg < basePricePerKg ? "stat-down" : (finalPricePerKg > basePricePerKg ? "stat-up" : "");
 
+        // 💡 エラー防止のために、長すぎる行を安全に分割
+        let extraInfoHtml = "";
+        if (techShortageLabel !== "") {
+            extraInfoHtml += `<br><span style="color:#dc2626; font-weight:bold;">${techShortageLabel}</span>`;
+        } else if (shieldStatus !== "") {
+            extraInfoHtml += `<br><span style="font-size:11px; color:#2e75b6;">${shieldStatus}</span>`;
+        }
+        if (market.id === 'direct_store') {
+            extraInfoHtml += directStoreLotteryText;
+        }
+
         dashboardTableBody.innerHTML += `
             <tr>
                 <td style="font-weight:bold;">🗺️ ${index + 1}枚目</td>
                 <td>${crop.name}<br><span style="font-size:11px; color:#64748b;">➔ ${market.name}</span></td>
                 <td>${Math.round(planYieldKg).toLocaleString()} kg</td>
-                <td class="${yieldClass}">${Math.round(actualYieldKg).toLocaleString()} kg ${techShortageLabel ? '<br><span style="color:#dc2626; font-weight:bold;">'+techShortageLabel+'</span>' : (shieldStatus ? '<br><span style="font-size:11px; color:#2e75b6;">'+shieldStatus+'</span>':'')}${market.id==='direct_store'?directStoreLotteryText:''}</td>
+                <td class="${yieldClass}">${Math.round(actualYieldKg).toLocaleString()} kg ${extraInfoHtml}</td>
                 <td>${basePricePerKg} 円</td>
                 <td class="${priceClass}">${finalPricePerKg} 円</td>
                 <td style="font-weight:bold; color:#1e40af;">＋${cropRevenue.toLocaleString()} 円</td>
@@ -722,7 +735,6 @@ endYearBtn.addEventListener("click", () => {
     stmtTotalRevenue.textContent = `＋ ${totalYearRevenue.toLocaleString()} 円`;
     stmtEndMoney.textContent = `${gameState.money.toLocaleString()} 円`;
 
-    // 🌟【新設】今年の決算データをグラフ用の履歴配列に自動保存
     if (!gameState.history) {
         gameState.history = [{ year: 0, money: 100000000, expense: 0, revenue: 0 }];
     }
@@ -733,12 +745,58 @@ endYearBtn.addEventListener("click", () => {
         revenue: totalYearRevenue
     });
 
+    // 💡 PDCA要因分析レポーティング
+    const actualYearProfit = totalYearRevenue - currentYearExpenses;
+    const gap = actualYearProfit - currentYearPlannedProfitSum;
+
+    const gapEl = document.getElementById("reflect-gap");
+    const globalReasonEl = document.getElementById("reflect-global-reason");
+    const localReasonEl = document.getElementById("reflect-local-reason");
+
+    if (gapEl) {
+        if (gap > 0) {
+            gapEl.innerHTML = `<span style="color: #16a34a; font-weight: bold;">計画より ＋${gap.toLocaleString()} 円 上振れ！(大成功です)</span><br><span style="font-size:11px; color:#64748b;">（計画見込利益: ${currentYearPlannedProfitSum.toLocaleString()}円 ➔ 実際の利益: ${actualYearProfit.toLocaleString()}円）</span>`;
+        } else if (gap < 0) {
+            gapEl.innerHTML = `<span style="color: #dc2626; font-weight: bold;">計画より －${Math.abs(gap).toLocaleString()} 円 下振れ！(リスク発生)</span><br><span style="font-size:11px; color:#64748b;">（計画見込利益: ${currentYearPlannedProfitSum.toLocaleString()}円 ➔ 実際の利益: ${actualYearProfit.toLocaleString()}円）</span>`;
+        } else {
+            gapEl.innerHTML = `<span style="color: #64748b; font-weight: bold;">±0 円（計画通りの完璧な采配です）</span>`;
+        }
+    }
+
+    if (globalReasonEl) {
+        if (globalEvent.id === "boom_exotic" || globalEvent.id === "boom_traditional") {
+            globalReasonEl.textContent = `市場で【${globalEvent.name}】が発生。特定の作物の市場価格が2倍に高騰したため、対象作物を栽培していた場合は強力な追い風となりました。`;
+        } else if (globalEvent.id === "bumper_crop") {
+            globalReasonEl.textContent = `全国的な【${globalEvent.name}】により、一般的な作物の市場単価が50%に大暴落（豊作貧乏）。出荷量が多くても売上が伸び悩む原因となりました。`;
+        } else if (globalEvent.id === "poor_crop") {
+            globalReasonEl.textContent = `全国的な【${globalEvent.name}】により、市場価格が2倍に急高騰。自らの農地が被害を免れていた場合、莫大な売上を確保できるチャンス期でした。`;
+        } else {
+            globalReasonEl.textContent = `【通常気象】市場価格の突発的な変動はありません。純粋な作物の基礎単価と、事前の販売先選定戦略がそのまま利益を決定しました。`;
+        }
+    }
+
+    if (localReasonEl) {
+        if (localEvent.id === "pest" || localEvent.id === "disease" || localEvent.id === "heavy_rain" || localEvent.id === "bad_growth") {
+            let isShielded = false;
+            if (localEvent.id === "pest" && gameState.landStrategies.some(s => s.assets.some(a => a.id === "pesticide"))) isShielded = true;
+            if (localEvent.id === "heavy_rain" && gameState.landStrategies.some(s => s.assets.some(a => a.id === "greenhouse"))) isShielded = true;
+            if (localEvent.id === "bad_growth" && gameState.landStrategies.some(s => s.assets.some(a => a.id === "fertilizer"))) isShielded = true;
+
+            localReasonEl.textContent = `地域に【${localEvent.name}】が発生し、作物の収穫量が大きく低下しました。${isShielded ? 'しかし、事前に導入していた防衛資材（施設や農薬など）が一部の農地で作物をガードしました。' : '資材・施設による防御が不足していた農地では、大きな機会損失（下振れ要因）となっています。'}`;
+        } else if (localEvent.id === "animal_damage") {
+            localReasonEl.textContent = `最悪の災害【${localEvent.name}】が発生。ハウス施設などの有無に関わらず、すべての作物が食い荒らされ収穫量が強制的に0kgとなりました。`;
+        } else if (localEvent.id === "good_weather") {
+            localReasonEl.textContent = `奇跡の【${localEvent.name}】が到来！全ての農地で収穫量が2倍に大ブーストされ、計画を大きく上回る収益をもたらした最大の要因です。`;
+        } else {
+            localReasonEl.textContent = `【特記事項なし】栽培トラブルは発生しませんでした。下振れがあるとすれば、従業員の技術レベル（C〜Sランク制限）が足りず、計画収量が最初から削られていた内部的な采配ミスが考えられます。`;
+        }
+    }
+
     financialDashboard.classList.remove("hidden");
     endYearBtn.classList.add("hidden");
     nextYearPhaseBtn.classList.remove("hidden");
 });
 
-// --- 7. 次の年への移行フェーズ ---
 // --- 7. 次の年への移行フェーズ ---
 nextYearPhaseBtn.addEventListener("click", () => {
     if (gameState.year >= 3) {
@@ -748,7 +806,6 @@ nextYearPhaseBtn.addEventListener("click", () => {
         showFinalResult();
     } else {
         saveCurrentStrategies();
-
         gameState.year += 1;
 
         generateLandStrategyUI(); 
@@ -756,13 +813,10 @@ nextYearPhaseBtn.addEventListener("click", () => {
 
         gameContainer.classList.add("hidden");
         setupScreen.classList.remove("hidden");
-
-        // 🌟 新しい年度の画面に戻った際、グラフを最新版に更新
         setTimeout(renderFinancialChart, 50);
     }
 });
 
-// 💡【バグ修正版】エラーを解消し、2年目→3年目も全選択データを100%記憶する関数
 function saveCurrentStrategies() {
     const cards = landCardsContainer.querySelectorAll(".land-strategy-card");
     cards.forEach((card, idx) => {
@@ -770,21 +824,17 @@ function saveCurrentStrategies() {
             gameState.landStrategies[idx] = {};
         }
         
-        // 1. 作物の選択を記憶
         const cropSel = card.querySelector(".land-crop-select");
         if (cropSel) gameState.landStrategies[idx].cropId = cropSel.value;
 
-        // 2. 販売先の選択を記憶
         const marketSel = card.querySelector(".land-market-select");
         if (marketSel) gameState.landStrategies[idx].marketId = marketSel.value;
 
-        // 3. 従業員の選択を記憶
         const workerSelects = card.querySelectorAll(".land-worker-select");
         let workerIds = [];
         workerSelects.forEach(sel => workerIds.push(sel.value));
         gameState.landStrategies[idx].employeeIds = workerIds;
 
-        // 4. 各資材のチェック状態を正しく安全に記憶
         let assetIds = [];
         if (card.querySelector(".asset-machinery")?.checked) assetIds.push("machinery");
         if (card.querySelector(".asset-house")?.checked) assetIds.push("greenhouse");
@@ -802,70 +852,75 @@ function showFinalResult() {
         resultRankElement.textContent = "🏆 ランクＳ：伝説のメガ農家";
         resultCommentElement.textContent = `素晴らしい！すべての農地に最適な人材と資材を個別配分し、リスクを完璧にヘッジしました。素晴らしい采配です！`;
     } else if (gameState.money >= 20000000) {
-        resultRankElement.textContent = "👍 ランクＡ：優秀な黒字経営者";
-        resultCommentElement.textContent = `見事な経営です！土地ごとの特性を活かして利益を堅実に残しました。立派な多角化農業経営者です。`;
+        resultRankElement.textContent = "🏅 ランクＡ：敏腕グリーン経営者";
+        resultCommentElement.textContent = `黒字を安定して確保し、近代的な営農スタイルを確立できています。さらに高みを目指しましょう！`;
+    } else if (gameState.money >= 10000000) {
+        resultRankElement.textContent = "🚜 ランクＢ：中堅ベテラン農家";
+        resultCommentElement.textContent = `手堅い経営ですが、イベントの波に少し飲まれてしまったかもしれません。機材や人材への投資バランスを見直してみましょう。`;
     } else {
-        resultRankElement.textContent = "📉 ランクＣ：破産寸前・赤字経営";
-        resultCommentElement.textContent = `残念…！リソースを分散させすぎて、特定の土地の投資（人件費・資材費）が回収できませんでした。次はコスト配分を意識してみましょう。`;
+        resultRankElement.textContent = "🥀 ランクＣ：新米開拓農家";
+        resultCommentElement.textContent = `資金が初期を下回ってしまいました。難易度の低い作物から始めたり、ITシステムでのカバーを試してみましょう！`;
     }
+
+    finalMoneyElement.textContent = gameState.money.toLocaleString();
+
+    gameContainer.classList.add("hidden");
+    resultScreen.classList.remove("hidden");
+
+    setTimeout(() => {
+        renderFinalSummaryChart();
+    }, 50);
 }
 
-// 🌟【新設】棒（費用・収益）と折れ線（資金残高）を融合した「複合経営ダッシュボードグラフ」
+// 📊 複合ダッシュボードグラフ
 let financialChartInstance = null;
-
 function renderFinancialChart() {
     const ctx = document.getElementById('financial-chart');
     if (!ctx) return;
 
-    // グラフの桁が大きくなりすぎないよう、金額データを「万単位」に補正して配列を作成
     const labels = gameState.history.map(h => h.year === 0 ? "初期" : `第${h.year}年`);
     const moneyData = gameState.history.map(h => Math.round(h.money / 10000));
     const expenseData = gameState.history.map(h => Math.round(h.expense / 10000));
     const revenueData = gameState.history.map(h => Math.round(h.revenue / 10000));
 
-    // 既存のグラフがあれば一度破棄（上書きエラー防止）
     if (financialChartInstance) {
         financialChartInstance.destroy();
     }
 
-    // 📊 複合グラフの生成（Bar と Line のハイブリッド）
     financialChartInstance = new Chart(ctx, {
         data: {
             labels: labels,
             datasets: [
                 {
-                    // 📈 1. 資金残高（プライマリ視点：折れ線グラフ）
                     type: 'line',
                     label: '資金残高(万)',
                     data: moneyData,
-                    borderColor: '#1e40af',       // 濃い青
+                    borderColor: '#1e40af',
                     backgroundColor: '#1e40af',
                     borderWidth: 3,
                     tension: 0.1,
                     pointRadius: 4,
-                    yAxisID: 'yMoney',            // 資金用の右側目盛に紐付け
-                    order: 1                      // 折れ線を一番手前に描画
+                    yAxisID: 'yMoney',
+                    order: 1
                 },
                 {
-                    // 📊 2. 本年収益（セカンダリ視点：棒グラフ）
                     type: 'bar',
                     label: '本年収益(万)',
                     data: revenueData,
-                    backgroundColor: '#16a34a',   // 緑
+                    backgroundColor: '#16a34a',
                     borderColor: '#16a34a',
                     borderWidth: 1,
-                    yAxisID: 'yFlow',             // 収支用の左側目盛に紐付け
+                    yAxisID: 'yFlow',
                     order: 2
                 },
                 {
-                    // 📊 3. 本年費用（セカンダリ視点：棒グラフ）
                     type: 'bar',
                     label: '本年費用(万)',
                     data: expenseData,
-                    backgroundColor: '#dc2626',   // 赤
+                    backgroundColor: '#dc2626',
                     borderColor: '#dc2626',
                     borderWidth: 1,
-                    yAxisID: 'yFlow',             // 収支用の左側目盛に紐付け
+                    yAxisID: 'yFlow',
                     order: 3
                 }
             ]
@@ -874,48 +929,97 @@ function renderFinancialChart() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        boxWidth: 10,
-                        font: { size: 9 },
-                        padding: 4
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
-                }
+                legend: { position: 'top', labels: { boxWidth: 10, font: { size: 9 }, padding: 4 } },
+                tooltip: { mode: 'index', intersect: false }
             },
             scales: {
-                // 💡 左側のY軸：当期の費用・収益フロー用（0からスタート）
                 yFlow: {
                     type: 'linear',
                     position: 'left',
                     beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: '本年収支 (万円)',
-                        font: { size: 8 }
-                    },
+                    title: { display: true, text: '本年収支 (万円)', font: { size: 8 } },
                     ticks: { font: { size: 8 } },
                     grid: { color: '#e2e8f0' }
                 },
-                // 💡 右側のY軸：ストック資産（資金残高）用
                 yMoney: {
                     type: 'linear',
                     position: 'right',
-                    beginAtZero: false, // 1億円付近の微細な増減を見えやすくするため自動調整
-                    title: {
-                        display: true,
-                        text: '総資金残高 (万円)',
-                        font: { size: 8 }
-                    },
+                    beginAtZero: false,
+                    title: { display: true, text: '総資金残高 (万円)', font: { size: 8 } },
                     ticks: { font: { size: 8 } },
-                    grid: { display: false } // グリッド線が重なって見づらくなるのを防ぐ
+                    grid: { display: false }
                 },
-                x: {
-                    ticks: { font: { size: 9 } },
+                x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+            }
+        }
+    });
+}
+
+// 📊 最終総括グラフ
+function renderFinalSummaryChart() {
+    const ctx = document.getElementById('final-financial-chart');
+    if (!ctx) return;
+
+    const labels = gameState.history.map(h => h.year === 0 ? "初期" : `第${h.year}年`);
+    const moneyData = gameState.history.map(h => Math.round(h.money / 10000));
+    const expenseData = gameState.history.map(h => Math.round(h.expense / 10000));
+    const revenueData = gameState.history.map(h => Math.round(h.revenue / 10000));
+
+    new Chart(ctx, {
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    type: 'line',
+                    label: '資金残高(万)',
+                    data: moneyData,
+                    borderColor: '#1e40af',
+                    backgroundColor: '#1e40af',
+                    borderWidth: 3,
+                    tension: 0.1,
+                    pointRadius: 5,
+                    yAxisID: 'yMoney',
+                    order: 1
+                },
+                {
+                    type: 'bar',
+                    label: '本年収益(万)',
+                    data: revenueData,
+                    backgroundColor: '#16a34a',
+                    borderColor: '#16a34a',
+                    yAxisID: 'yFlow',
+                    order: 2
+                },
+                {
+                    type: 'bar',
+                    label: '本年費用(万)',
+                    data: expenseData,
+                    backgroundColor: '#dc2626',
+                    borderColor: '#dc2626',
+                    yAxisID: 'yFlow',
+                    order: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                yFlow: {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    title: { display: true, text: '本年収支 (万円)', font: { size: 10 } }
+                },
+                yMoney: {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: false,
+                    title: { display: true, text: '総資金残高 (万円)', font: { size: 10 } },
                     grid: { display: false }
                 }
             }

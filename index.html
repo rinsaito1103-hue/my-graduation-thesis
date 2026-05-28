@@ -131,9 +131,30 @@
                         </tr>
                     </thead>
                     <tbody id="dashboard-table-body">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
+
+            <div id="reflection-report-box" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; border-left: 5px solid #2e75b6; margin-top: 20px; text-align: left;">
+                <h3 style="margin: 0 0 12px 0; color: #1e3a8a; font-size: 16px;">🔍 本年度の経営振り返り ＆ 要因分析（PDCA）</h3>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #334155;">
+                    <p style="margin: 0;">📊 <strong>期待予実ギャップ :</strong> <span id="reflect-gap" style="font-weight: bold;">-</span></p>
+                    <p style="margin: 0;">🌍 <strong>外部環境の要因分析 :</strong> <span id="reflect-global-reason">-</span></p>
+                    <p style="margin: 0;">📍 <strong>局地・内部の要因分析 :</strong> <span id="reflect-local-reason">-</span></p>
+                </div>
+
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1; font-size: 13px;">
+                    <label style="font-weight: bold; color: #1e3a8a;">🎯 次期に向けた経営改善方針 (Action) を設定してください :</label><br>
+                    <select style="width: 100%; padding: 8px; margin-top: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                        <option>【人材投資】スタッフの配置や技術レベル（教育・IT補正）を見直す</option>
+                        <option>【リスク管理】施設・農機などの設備投資を強化し、気象災害リスクをヘッジする</option>
+                        <option>【販売戦略】出荷先の条件（有機必須や数量上限）と作物の相性を再計算する</option>
+                        <option>【経営多角化】全ての土地に同じ作物を植えず、ポートフォリオを分散させる</option>
+                    </select>
+                </div>
+            </div>
+
         </div>
 
         <div style="margin-top: 25px;">
@@ -147,27 +168,40 @@
     </div>
 
     <div id="result-screen" class="hidden">
-        <div class="setup-content" style="text-align: center;">
+        <div class="setup-content" style="text-align: center; max-width: 800px; margin: 0 auto; padding: 20px;">
             <h2>🎉 3年間経営お疲れ様でした！</h2>
+            
             <div class="status-board" style="margin: 20px auto; max-width: 400px;">
                 <p>最終総資産: <span id="final-money" class="highlight-text">0</span> 円</p>
             </div>
-            <div class="info-box" style="background: #fff3cd;">
+
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 25px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; color: #334155; font-size: 16px; text-align: left;">📈 3年間の財務推移レポート（費用・収益・資産残高）</h3>
+                <div style="position: relative; height: 280px; width: 100%;">
+                    <canvas id="final-financial-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="info-box" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
                 <h3>👑 経営評価ランク</h3>
                 <p id="result-rank" style="font-size: 24px; font-weight: bold; color: #d94111; margin: 10px 0;">---</p>
                 <p id="result-comment">評価コメント</p>
             </div>
-            <button onclick="window.location.reload();" style="background: #28a745; margin-top: 20px;">タイトルに戻って再挑戦</button>
+            
+            <button onclick="window.location.reload();" style="background: #28a745; color: white; padding: 12px 35px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                タイトルに戻って再挑戦
+            </button>
         </div>
     </div>
 
-    <script src="lands.js?v=2"></script>
-    <script src="employees.js?v=2"></script>
-    <script src="crops.js?v=2"></script>
-    <script src="markets.js?v=2"></script>
-    <script src="assets.js?v=2"></script>
-    <script src="events.js?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="game.js?v=13"></script>
+    <script src="assets.js"></script>
+    <script src="crops.js"></script>
+    <script src="lands.js"></script>
+    <script src="employees.js"></script>
+    <script src="markets.js"></script>
+    <script src="events.js"></script>
+    
+    <script src="game.js?v=21"></script> 
 </body>
 </html>
