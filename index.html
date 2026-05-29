@@ -20,6 +20,43 @@
         </div>
     </div>
 
+    <!-- ===== 土地公開スクリーン（新規追加） ===== -->
+<div id="land-reveal-screen" class="hidden">
+    <div class="land-reveal-bg" id="land-reveal-bg"></div>
+    <div class="land-reveal-overlay"></div>
+    <div class="land-reveal-content">
+        <p class="land-reveal-header-text">🎲 あなたの農地が決まりました！</p>
+        <div class="land-reveal-card" id="land-reveal-card">
+            <div class="land-reveal-img-wrap">
+                <img id="land-reveal-img" src="" alt="農地画像">
+            </div>
+            <div class="land-reveal-info">
+                <h2 id="land-reveal-name">---</h2>
+                <p id="land-reveal-desc">---</p>
+                <div class="land-reveal-stats">
+                    <div class="land-stat-item">
+                        <span class="land-stat-label">💰 年間賃料</span>
+                        <span id="land-reveal-cost" class="land-stat-value">---</span>
+                    </div>
+                    <div class="land-stat-item">
+                        <span class="land-stat-label">⚡ 土地パワー推移</span>
+                        <span id="land-reveal-power" class="land-stat-value">---</span>
+                    </div>
+                    <div class="land-stat-item">
+                        <span class="land-stat-label">👤 必要人数推移</span>
+                        <span id="land-reveal-workers" class="land-stat-value">---</span>
+                    </div>
+                    <div class="land-stat-item">
+                        <span class="land-stat-label">🗺️ 土地枚数</span>
+                        <span id="land-reveal-cards" class="land-stat-value">---</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id="land-reveal-proceed-btn">この農地で戦略設定へ進む ➔</button>
+    </div>
+</div>
+
     <div id="setup-screen" class="hidden">
         <div id="setup-content-wide" style="display: flex; flex-direction: row; gap: 25px; align-items: flex-start; width: 100%; flex-wrap: nowrap; margin-top: 20px;">
             

@@ -15,6 +15,7 @@ let gameState = {
 
 // --- 2. 画面要素（DOM）の取得 ---
 const startScreen = document.getElementById("start-screen");
+const landRevealScreen = document.getElementById("land-reveal-screen");
 const setupScreen = document.getElementById("setup-screen");
 const gameContainer = document.getElementById("game-container");
 const resultScreen = document.getElementById("result-screen");
@@ -421,14 +422,35 @@ startBtn.addEventListener("click", () => {
 
     const randomIndex = Math.floor(Math.random() * LAND_MASTER.length);
     gameState.currentLand = LAND_MASTER[randomIndex];
+    const land = gameState.currentLand;
 
-    setupLandName.textContent = gameState.currentLand.name;
-    setupLandDesc.textContent = gameState.currentLand.desc;
+    // 土地公開画面に情報をセット
+    document.getElementById("land-reveal-bg").style.backgroundImage = `url("${land.image}")`;
+    document.getElementById("land-reveal-img").src = land.image;
+    document.getElementById("land-reveal-name").textContent = land.name;
+    document.getElementById("land-reveal-desc").textContent = land.desc;
+    document.getElementById("land-reveal-cost").textContent =
+        land.cost === 0 ? "無料（0円）" : `${(land.cost / 10000).toLocaleString()}万円 / 年`;
+    document.getElementById("land-reveal-power").textContent =
+        `1年目:${land.power.year1} → 2年目:${land.power.year2} → 3年目:${land.power.year3}`;
+    document.getElementById("land-reveal-workers").textContent =
+        `1年目:${land.requiredWorkers.year1}人 → 2年目:${land.requiredWorkers.year2}人 → 3年目:${land.requiredWorkers.year3}人`;
+    document.getElementById("land-reveal-cards").textContent = `${land.totalCards}枚`;
+
+    startScreen.classList.add("hidden");
+    landRevealScreen.classList.remove("hidden");
+});
+
+// 土地公開 → 戦略設定へ進むボタン（新規追加）
+document.getElementById("land-reveal-proceed-btn").addEventListener("click", () => {
+    const land = gameState.currentLand;
+    setupLandName.textContent = land.name;
+    setupLandDesc.textContent = land.desc;
 
     generateLandStrategyUI();
     updateSetupFinancialBanner();
 
-    startScreen.classList.add("hidden");
+    landRevealScreen.classList.add("hidden");
     setupScreen.classList.remove("hidden");
     setTimeout(renderFinancialChart, 50);
 });

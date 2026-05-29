@@ -4,6 +4,7 @@ const LAND_MASTER = [
     {
         id: "premium",
         name: "優良農地",
+        image:"land_premium.png",
         totalCards: 3,     // 土地枚数: 3枚
         cost: 1000000,     // 年間賃料: 100万円
         // 年度ごとの土地パワー
@@ -15,6 +16,7 @@ const LAND_MASTER = [
     {
         id: "urban",
         name: "都市農園",
+        image:"land_urban.png",
         totalCards: 3,     // 土地枚数: 3枚
         cost: 2000000,     // 年間賃料: 200万円
         power: { year1: 3, year2: 3, year3: 2 },
@@ -24,6 +26,7 @@ const LAND_MASTER = [
     {
         id: "normal",
         name: "通常農地",
+        image:"land_normal.png",
         totalCards: 4,     // 土地枚数: 4枚
         cost: 4000000,     // 💡元のコードと整合性を取るため40万円（画像通りなら400000円）
         power: { year1: 2, year2: 2, year3: 2 },
@@ -33,6 +36,7 @@ const LAND_MASTER = [
     {
         id: "mountain",
         name: "中山間農地",
+        image:"land_mountain.png",
         totalCards: 4,     // 土地枚数: 4枚
         cost: 200000,      // 年間賃料: 20万円
         power: { year1: 2, year2: 2, year3: 2 },
@@ -42,6 +46,7 @@ const LAND_MASTER = [
     {
         id: "abandoned",
         name: "耕作放棄農地",
+        image:"land_abandoned.png",
         totalCards: 3,     // 土地枚数: 3枚
         cost: 0,           // 年間賃料: 0円（破格！）
         power: { year1: 1, year2: 2, year3: 3 },
@@ -51,6 +56,7 @@ const LAND_MASTER = [
     {
         id: "large",
         name: "大規模農地",
+        image:"land_large.png",
         totalCards: 5,     // 土地枚数: 5枚
         cost: 500000,      // 年間賃料: 50万円
         power: { year1: 2, year2: 2, year3: 2 },
