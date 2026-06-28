@@ -13,6 +13,26 @@ let gameState = {
     ]
 };
 
+// 🌟【新設】先生からのイベントデータを受信・保持するための変数
+let receivedGlobalEventId = null;
+let receivedLocalEventId = null;
+
+// 📡【新設】Supabase 受信アンテナの設定
+const SUPABASE_URL = 'https://lozwsuhkcbuzbdynnyml.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvendzdWhrY2J1emJkeW5ueW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDg1MzgsImV4cCI6MjA5NjEyNDUzOH0.bmk4mz5NyNUqWlImBqWBRISQAzJq3GF6Ply7mG3yNAc'; // ※ご自身のキー
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const channel = supabaseClient.channel('nototore-room');
+
+// 先生からの電波を常に傍受する
+channel.on('broadcast', { event: 'yearly_events' }, payload => {
+    console.log("📡 先生からイベントを受信しました！", payload);
+    // 電波が届いたら、中身を変数に保存してボタンのロックを解除する
+    receivedGlobalEventId = payload.payload.global_id;
+    receivedLocalEventId = payload.payload.local_id;
+    checkAndEnableEndYearBtn(); 
+}).subscribe();
+
 // --- 2. 画面要素（DOM）の取得 ---
 const startScreen = document.getElementById("start-screen");
 const landRevealScreen = document.getElementById("land-reveal-screen");
@@ -45,6 +65,25 @@ const sumCumExpense = document.getElementById("sum-cum-expense");
 const sumCumRevenue = document.getElementById("sum-cum-revenue");
 
 let currentYearPlannedProfitSum = 0;
+
+// 💡【新設】イベント受信状態をチェックして決算ボタンを制御する関数
+function checkAndEnableEndYearBtn() {
+    if (endYearBtn && !endYearBtn.classList.contains("hidden")) {
+        if (receivedGlobalEventId && receivedLocalEventId) {
+            // 受信完了 ➔ ボタンをオレンジにして押せるようにする
+            endYearBtn.disabled = false;
+            endYearBtn.textContent = "📄 この年度の決算を行う（イベント受信完了！）";
+            endYearBtn.style.backgroundColor = "#c65911";
+            endYearBtn.style.cursor = "pointer";
+        } else {
+            // 未受信 ➔ ボタンをグレーにしてロックする
+            endYearBtn.disabled = true;
+            endYearBtn.textContent = "⏳ 先生のイベント発表待ち...";
+            endYearBtn.style.backgroundColor = "#94a3b8";
+            endYearBtn.style.cursor = "not-allowed";
+        }
+    }
+}
 
 // 資材コストをASSET_MASTERから取得するヘルパー関数（ハードコードを廃止）
 function getAssetCost(assetId) {
@@ -584,8 +623,9 @@ beginBusinessBtn.addEventListener("click", () => {
 
     document.getElementById("financial-dashboard").classList.add("hidden");
     endYearBtn.classList.remove("hidden");
-    document.getElementById("next-year-phase-btn").classList.add("hidden");
+    checkAndEnableEndYearBtn(); 
 
+    document.getElementById("next-year-phase-btn").classList.add("hidden");
     alert(`【第 ${gameState.year} 年目 全農地・投資確定！】\n本期の投資総額: ${(totalInvestment).toLocaleString()}円`);
 
     setupScreen.classList.add("hidden");
@@ -606,12 +646,12 @@ const stmtTotalRevenue = document.getElementById("stmt-total-revenue");
 const stmtEndMoney = document.getElementById("stmt-end-money");
 
 endYearBtn.addEventListener("click", () => {
+    const globalEvent = GLOBAL_EVENTS.find(e => e.id === receivedGlobalEventId) || GLOBAL_EVENTS[0];
+    const localEvent = LOCAL_EVENTS.find(e => e.id === receivedLocalEventId) || LOCAL_EVENTS[0];
+
     const land = gameState.currentLand;
     const yearKey = "year" + gameState.year;
-    const landPower = land.power[yearKey] || 1.0; 
-
-    const globalEvent = GLOBAL_EVENTS[Math.floor(Math.random() * GLOBAL_EVENTS.length)];
-    const localEvent = LOCAL_EVENTS[Math.floor(Math.random() * LOCAL_EVENTS.length)];
+    const landPower = land.power[yearKey] || 1.0;
 
     dashGlobalEventName.textContent = `🌍 ${globalEvent.name}`;
     dashLocalEventName.textContent = `📍 ${localEvent.name}`;
@@ -848,6 +888,9 @@ nextYearPhaseBtn.addEventListener("click", () => {
         saveCurrentStrategies();
         gameState.year += 1;
 
+        receivedGlobalEventId = null;
+        receivedLocalEventId = null;
+
         generateLandStrategyUI(); 
         updateSetupFinancialBanner(); 
 
@@ -910,6 +953,17 @@ function showFinalResult() {
     setTimeout(() => {
         renderFinalSummaryChart();
     }, 50);
+
+    supabaseClient.from('scores').insert([
+        { 
+            player_name: gameState.playerName, 
+            final_money: gameState.money 
+        }
+    ]).then(response => {
+        console.log("🏆 スコアの送信が完了しました！", response);
+    }).catch(error => {
+        console.error("スコア送信エラー:", error);
+    });
 }
 
 // 📊 複合ダッシュボードグラフ
