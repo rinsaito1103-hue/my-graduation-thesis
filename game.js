@@ -8,6 +8,7 @@ let gameState = {
     cumRevenue: 0,
     currentLand: null,
     landStrategies: [],
+    landHistory: [],
     history: [
         { year: 0, money: 100000000, expense: 0, revenue: 0 }
     ]
@@ -27,9 +28,18 @@ const channel = supabaseClient.channel('nototore-room');
 // 先生からの電波を常に傍受する
 channel.on('broadcast', { event: 'yearly_events' }, payload => {
     console.log("📡 先生からイベントを受信しました！", payload);
-    // 電波が届いたら、中身を変数に保存してボタンのロックを解除する
+    
     receivedGlobalEventId = payload.payload.global_id;
-    receivedLocalEventId = payload.payload.local_id;
+    let localId = payload.payload.local_id;
+
+    // 🌟追加：局地イベントが「班ごとにランダム」の指示だった場合、学生のPCでルーレットを回す
+    if (localId === "random_per_team") {
+        // events.js にある LOCAL_EVENTS の中からランダムに1つ選ぶ
+        const randIdx = Math.floor(Math.random() * LOCAL_EVENTS.length);
+        localId = LOCAL_EVENTS[randIdx].id;
+    }
+
+    receivedLocalEventId = localId; // 確定したイベントIDを保存
     checkAndEnableEndYearBtn(); 
 }).subscribe();
 
@@ -276,6 +286,38 @@ window.calculateLiveCardCost = function(cardOrIdx) {
         techStatusText = "<span style='color:#dc2626; font-weight:bold;'>⚠️技術不足・出荷不可</span>";
     }
 
+    const cardIndex = parseInt(card.getAttribute("data-idx")) - 1;
+    let hist = gameState.landHistory[cardIndex] || { lastFamily: null, consecutiveCounter: 0 };
+    let tempCounter = hist.consecutiveCounter;
+
+    // 前年と同じ科ならカウンター増加、違うならリセット（輪作）
+    if (hist.lastFamily === crop?.family && hist.lastFamily !== null) {
+        tempCounter += 1;
+    } else {
+        tempCounter = 0;
+    }
+
+    const hasOrganic = card.querySelector(".asset-organic")?.checked;
+    const hasIT = card.querySelector(".asset-it")?.checked && !card.querySelector(".asset-it")?.disabled;
+    const hasFertilizer = card.querySelector(".asset-fertilizer")?.checked;
+
+    let replantMultiplier = 1.0;
+    let replantStatusText = "<span style='color:#64748b;'>正常（輪作/1年目）</span>";
+
+    if (tempCounter > 0) {
+        if (hasOrganic) {
+            replantStatusText = "<span style='color:#2e75b6;'>🌿 有機防衛（被害無効化）</span>";
+        } else if (hasIT && hasFertilizer) {
+            replantStatusText = "<span style='color:#2e75b6;'>💻🧪 データ施肥（被害無効化）</span>";
+        } else {
+            if (tempCounter === 1) { replantMultiplier = 0.8; replantStatusText = "<span style='color:#f59e0b; font-weight:bold;'>⚠️ 連作2年目 (収量0.8倍)</span>"; }
+            else if (tempCounter === 2) { replantMultiplier = 0.4; replantStatusText = "<span style='color:#dc2626; font-weight:bold;'>🚨 連作3年目 (収量0.4倍)</span>"; }
+            else { replantMultiplier = 0.1; replantStatusText = "<span style='color:#7f1d1d; font-weight:bold;'>☠️ 土壌崩壊 (収量0.1倍)</span>"; }
+        }
+    }
+    
+    planYield = planYield * replantMultiplier; // 連作ペナルティを適用
+
     let actualSaleQty = planYield;
     if (marketId === "restaurant" && actualSaleQty > 200) actualSaleQty = 200;
     if (marketId === "natural_store" && actualSaleQty > 250) actualSaleQty = 250;
@@ -331,6 +373,7 @@ window.calculateLiveCardCost = function(cardOrIdx) {
             </thead>
             <tbody>
                 <tr class="row-status"><td>従業員技術判定</td><td class="text-center">-</td><td class="text-right">${techStatusText}</td></tr>
+                <tr class="row-status"><td>🔄 連作・土壌状態</td><td class="text-center">-</td><td class="text-right">${replantStatusText}</td></tr>
                 <tr class="row-revenue-header"><td>売上</td><td class="text-center">円</td><td class="text-right">${estimatedRevenue.toLocaleString()}</td></tr>
                 <tr><td>　販売価格 (単価)</td><td class="text-center">円</td><td class="text-right">${basePricePerKg.toLocaleString()}</td></tr>
                 <tr><td>　計画収穫量</td><td class="text-center">kg</td><td class="text-right">${Math.round(planYield)}</td></tr>
@@ -462,6 +505,11 @@ startBtn.addEventListener("click", () => {
     const randomIndex = Math.floor(Math.random() * LAND_MASTER.length);
     gameState.currentLand = LAND_MASTER[randomIndex];
     const land = gameState.currentLand;
+
+    gameState.landHistory = Array(land.totalCards).fill(null).map(() => ({ 
+        lastFamily: null, 
+        consecutiveCounter: 0 
+    }));
 
     // 土地公開画面に情報をセット
     document.getElementById("land-reveal-bg").style.backgroundImage = `url("${land.image}")`;
@@ -759,6 +807,35 @@ endYearBtn.addEventListener("click", () => {
         if (finalTechShortage) totalFinalMultiplier = 0;
         let avgFinalMultiplier = finalWorkerCount > 0 ? (totalFinalMultiplier / finalWorkerCount) : 0;
         let actualYieldKg = planYieldKg * yieldRate * avgFinalMultiplier;
+        let hist = gameState.landHistory[index] || { lastFamily: null, consecutiveCounter: 0 };
+        let tempCounter = hist.consecutiveCounter;
+        
+        if (hist.lastFamily === crop.family && hist.lastFamily !== null) tempCounter += 1;
+        else tempCounter = 0;
+
+        const hasFinalOrganic = assets.some(a => a.id === "organic");
+        const hasFinalFertilizer = assets.some(a => a.id === "fertilizer");
+
+        let replantMultiplier = 1.0;
+        let replantLabel = "";
+        
+        if (tempCounter > 0) {
+            if (hasFinalOrganic || (hasFinalIT && hasFinalFertilizer)) {
+                // 回避成功
+            } else {
+                if (tempCounter === 1) { replantMultiplier = 0.8; replantLabel = "⚠️連作障害(軽)"; }
+                else if (tempCounter === 2) { replantMultiplier = 0.4; replantLabel = "🚨連作障害(重)"; }
+                else { replantMultiplier = 0.1; replantLabel = "☠️土壌崩壊"; }
+            }
+        }
+        
+        actualYieldKg = actualYieldKg * replantMultiplier;
+        
+        // 来年に向けて、確定した歴史を保存する
+        gameState.landHistory[index] = {
+            lastFamily: crop.family,
+            consecutiveCounter: tempCounter
+        };
 
         let techShortageLabel = finalTechShortage ? "⚠️技術不足で出荷不可" : "";
         let directStoreLotteryText = "";
@@ -786,8 +863,9 @@ endYearBtn.addEventListener("click", () => {
         let extraInfoHtml = "";
         if (techShortageLabel !== "") {
             extraInfoHtml += `<br><span style="color:#dc2626; font-weight:bold;">${techShortageLabel}</span>`;
-        } else if (shieldStatus !== "") {
-            extraInfoHtml += `<br><span style="font-size:11px; color:#2e75b6;">${shieldStatus}</span>`;
+        } else {
+            if (shieldStatus !== "") extraInfoHtml += `<br><span style="font-size:11px; color:#2e75b6;">${shieldStatus}</span>`;
+            if (replantLabel !== "") extraInfoHtml += `<br><span style="color:#f59e0b; font-weight:bold; font-size:11px;">${replantLabel}</span>`;
         }
         if (market.id === 'direct_store') {
             extraInfoHtml += directStoreLotteryText;
@@ -871,6 +949,47 @@ endYearBtn.addEventListener("click", () => {
             localReasonEl.textContent = `【特記事項なし】栽培トラブルは発生しませんでした。下振れがあるとすれば、従業員の技術レベル（C〜Sランク制限）が足りず、計画収量が最初から削られていた内部的な采配ミスが考えられます。`;
         }
     }
+    // 🌟ここから追加：今年のPDCAデータを抽出し保存する
+    let allAssets = [];
+    let staffCount = 0;
+    gameState.landStrategies.forEach(s => {
+        if(s.assets) s.assets.forEach(a => { if(!allAssets.includes(a.name)) allAssets.push(a.name); });
+        if(s.employees) staffCount += s.employees.length;
+    });
+
+    businessLogs.push({
+        year: gameState.year,
+        investments: allAssets,
+        staffCount: staffCount,
+        globalEvent: globalEvent.name,
+        localEvent: localEvent.name,
+        sales: totalYearRevenue,
+        expense: currentYearExpenses,
+        netProfit: actualYearProfit,
+        // 要因分析のテキストを取得
+        feedback: (gapEl ? gapEl.textContent : "") + "\n" + 
+                  (globalReasonEl ? globalReasonEl.textContent : "") + "\n" + 
+                  (localReasonEl ? localReasonEl.textContent : "")
+    });
+
+    const logDataToDB = {
+        player_name: gameState.playerName,
+        year: gameState.year,
+        investments: allAssets.length > 0 ? allAssets.join('・') : 'なし',
+        staff_count: staffCount,
+        global_event: globalEvent.name,
+        local_event: localEvent.name,
+        sales: totalYearRevenue,
+        expense: currentYearExpenses,
+        net_profit: actualYearProfit,
+        feedback: (gapEl ? gapEl.textContent : "") + " | " + 
+                  (globalReasonEl ? globalReasonEl.textContent : "") + " | " + 
+                  (localReasonEl ? localReasonEl.textContent : "")
+    };
+
+    supabaseClient.from('yearly_logs').insert([logDataToDB])
+        .then(res => console.log("☁️ ログをサーバーへ自動送信しました"))
+        .catch(err => console.error("送信エラー:", err));
 
     financialDashboard.classList.remove("hidden");
     endYearBtn.classList.add("hidden");
@@ -1119,4 +1238,75 @@ function renderFinalSummaryChart() {
             }
         }
     });
+}
+
+// ==========================================================================
+// 🌟 追加：PDCAログ モーダル制御ロジック
+// ==========================================================================
+let businessLogs = [];
+
+window.openLogModal = function() {
+    document.getElementById('log-modal').style.display = 'flex';
+    renderLogs();
+};
+
+window.closeLogModal = function() {
+    document.getElementById('log-modal').style.display = 'none';
+};
+
+function renderLogs() {
+    const container = document.getElementById('log-container');
+    const emptyMsg = document.getElementById('empty-log-msg');
+    
+    if (businessLogs.length === 0) {
+        emptyMsg.style.display = 'block';
+        return;
+    }
+    
+    emptyMsg.style.display = 'none';
+    // 古い描画をクリア
+    container.querySelectorAll('.log-card').forEach(el => el.remove());
+
+    // 最新の年が上に来るように逆順でループ
+    for (let i = businessLogs.length - 1; i >= 0; i--) {
+        const log = businessLogs[i];
+        const profitColor = log.netProfit >= 0 ? '#16a34a' : '#dc2626';
+        
+        const card = document.createElement('div');
+        card.className = 'log-card';
+        card.innerHTML = `
+            <h3 style="margin-top:0; color:#1e40af; border-bottom:2px solid #cbd5e1; padding-bottom:5px;">📅 第 ${log.year} 年目の経営実績</h3>
+            <div class="pdca-grid">
+                <div class="pdca-block">
+                    <strong>📝 Plan (投資・人員配置)</strong>
+                    <ul>
+                        <li>導入した資材: ${log.investments.length > 0 ? log.investments.join(', ') : 'なし'}</li>
+                        <li>雇用した従業員: 計 ${log.staffCount} 名</li>
+                    </ul>
+                </div>
+                <div class="pdca-block">
+                    <strong>🚜 Do (環境・発生イベント)</strong>
+                    <ul>
+                        <li>全体環境: ${log.globalEvent}</li>
+                        <li>局地環境: ${log.localEvent}</li>
+                    </ul>
+                </div>
+                <div class="pdca-block" style="grid-column: span 2;">
+                    <strong>📊 Check (財務結果)</strong>
+                    <table style="width:100%; font-size:14px; text-align:left; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 4px;">売上高: ¥${log.sales.toLocaleString()}</td>
+                            <td style="padding: 4px;">本年度費用: ¥${log.expense.toLocaleString()}</td>
+                            <td style="padding: 4px; font-size: 16px;"><strong>純利益: <span style="color:${profitColor}">¥${log.netProfit.toLocaleString()}</span></strong></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="pdca-block" style="grid-column: span 2; background: #fdfae6; border-left: 4px solid #f59e0b;">
+                    <strong>💡 Action (システムによる要因分析)</strong>
+                    <p style="margin:5px 0 0 0; font-size:12px; line-height:1.6; color: #334155; white-space: pre-wrap;">${log.feedback}</p>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    }
 }

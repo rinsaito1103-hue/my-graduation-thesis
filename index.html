@@ -231,6 +231,20 @@
         </div>
     </div>
 
+    <button id="log-toggle-btn" onclick="openLogModal()">📊 経営履歴（PDCA）</button>
+
+    <div id="log-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin: 0; color: #1e40af; font-size: 20px;">📈 経営判断・PDCA振り返りログ</h2>
+                <button class="close-btn" onclick="closeLogModal()">✕ 閉じる</button>
+            </div>
+            <div id="log-container" class="modal-body">
+                <p id="empty-log-msg" style="text-align: center; color: #64748b; margin-top: 40px;">まだ決算データがありません。1年目が終了するとここにログが蓄積されます。</p>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="assets.js"></script>
     <script src="crops.js"></script>

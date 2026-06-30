@@ -12,11 +12,18 @@
         .control-group { margin-bottom: 20px; background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #475569; }
         label { display: block; margin-bottom: 8px; font-weight: bold; color: #94a3b8; font-size: 14px; }
         select { width: 100%; padding: 12px; border-radius: 6px; border: none; background: #f8fafc; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
-        button { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background-color: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3); }
-        button:hover { background-color: #b91c1c; transform: translateY(2px); box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); }
-        .btn-blue { background-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3); margin-bottom: 15px; }
-        .btn-blue:hover { background-color: #1d4ed8; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3); }
-        #log-area { margin-top: 20px; padding: 10px; background: #000; color: #22c55e; font-family: monospace; font-size: 12px; border-radius: 6px; height: 100px; overflow-y: auto; margin-bottom: 20px;}
+        button { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-bottom: 15px; }
+        
+        .btn-red { background-color: #dc2626; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3); }
+        .btn-red:hover { background-color: #b91c1c; transform: translateY(2px); box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); }
+        
+        .btn-blue { background-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3); font-size: 16px; padding: 12px; }
+        .btn-blue:hover { background-color: #1d4ed8; transform: translateY(2px); box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3); }
+        
+        .btn-green { background-color: #16a34a; box-shadow: 0 4px 6px rgba(22, 163, 74, 0.3); font-size: 16px; padding: 12px; }
+        .btn-green:hover { background-color: #15803d; transform: translateY(2px); box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3); }
+
+        #log-area { margin-top: 10px; padding: 10px; background: #000; color: #22c55e; font-family: monospace; font-size: 12px; border-radius: 6px; height: 100px; overflow-y: auto; margin-bottom: 20px;}
         
         /* ランキング表のスタイル */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #1e293b; border-radius: 8px; overflow: hidden; }
@@ -31,8 +38,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            // ⚠️ 以前お使いのキーをそのままセットしています
             const SUPABASE_URL = 'https://lozwsuhkcbuzbdynnyml.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvendzdWhrY2J1emJkeW5ueW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDg1MzgsImV4cCI6MjA5NjEyNDUzOH0.bmk4mz5NyNUqWlImBqWBRISQAzJq3GF6Ply7mG3yNAc'; // ⚠️ ここをご自身の本物のキーにしてください！
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvendzdWhrY2J1emJkeW5ueW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDg1MzgsImV4cCI6MjA5NjEyNDUzOH0.bmk4mz5NyNUqWlImBqWBRISQAzJq3GF6Ply7mG3yNAc';
 
             const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             const statusEl = document.getElementById("connection-status");
@@ -53,10 +61,19 @@
 
             // 📡 イベント送信ボタンの処理
             document.getElementById("broadcast-btn").addEventListener("click", async () => {
-                const globalEventId = document.getElementById("global-select").value;
-                const localEventId = document.getElementById("local-select").value;
-                const globalName = document.getElementById("global-select").options[document.getElementById("global-select").selectedIndex].text;
+                let globalEventId = document.getElementById("global-select").value;
+                let localEventId = document.getElementById("local-select").value;
+                let globalName = document.getElementById("global-select").options[document.getElementById("global-select").selectedIndex].text;
                 const localName = document.getElementById("local-select").options[document.getElementById("local-select").selectedIndex].text;
+
+                // 🎲 全体イベントが「ランダム」の場合、先生側でルーレットを回す
+                if (globalEventId === "random") {
+                    const options = document.getElementById("global-select").options;
+                    // 1番目（ランダムの選択肢）を除外して抽選
+                    const randIdx = Math.floor(Math.random() * (options.length - 1)) + 1;
+                    globalEventId = options[randIdx].value;
+                    globalName = options[randIdx].text + " (※ランダム抽選結果)";
+                }
 
                 if (!confirm(`【確認】\n全体環境: ${globalName}\n局地環境: ${localName}\n\nこのイベントを全班の画面に一斉送信しますか？`)) {
                     return;
@@ -73,12 +90,52 @@
                 logArea.scrollTop = logArea.scrollHeight;
             });
 
+            // 📥 全班ログダウンロード処理
+            document.getElementById("download-all-logs-btn").addEventListener("click", async () => {
+                const { data, error } = await supabaseClient
+                    .from('yearly_logs')
+                    .select('*')
+                    .order('player_name', { ascending: true })
+                    .order('year', { ascending: true });
+
+                if (error) {
+                    alert("データの取得に失敗しました: " + error.message);
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    alert("まだサーバーにログデータが届いていません。");
+                    return;
+                }
+
+                let csvContent = "班(プレイヤー)名,年度,導入資材,雇用人数,全体環境,局地環境,売上高(円),費用(円),純利益(円),要因分析\n";
+                data.forEach(log => {
+                    let pName = `"${log.player_name}"`;
+                    let inv = `"${log.investments}"`;
+                    let gEv = `"${log.global_event}"`;
+                    let lEv = `"${log.local_event}"`;
+                    let fb = `"${log.feedback}"`; 
+
+                    let row = `${pName},${log.year},${inv},${log.staff_count},${gEv},${lEv},${log.sales},${log.expense},${log.net_profit},${fb}`;
+                    csvContent += row + "\n";
+                });
+
+                const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+                const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", `農トレ_全班集計データ.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
             // 🏆 ランキング取得ボタンの処理
             document.getElementById("fetch-ranking-btn").addEventListener("click", async () => {
                 const tbody = document.getElementById("ranking-tbody");
                 tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>読み込み中...</td></tr>";
 
-                // Supabaseから scores テーブルのデータを金額順（降序）で取得
                 const { data, error } = await supabaseClient
                     .from('scores')
                     .select('*')
@@ -96,7 +153,6 @@
                     return;
                 }
 
-                // 取得したデータを表に流し込む
                 data.forEach((row, index) => {
                     let rankClass = "";
                     let rankIcon = `${index + 1}位`;
@@ -128,6 +184,7 @@
         <div class="control-group">
             <label>🌍 全体環境イベント（価格変動）を選ぶ</label>
             <select id="global-select">
+                <option value="random">🎲 ランダム（全班共通で何かが発生）</option>
                 <option value="normal">通常（変動なし）</option>
                 <option value="boom_exotic">📈 ブーム（外来野菜: アーティチョーク高騰）</option>
                 <option value="boom_traditional">📈 ブーム（伝統野菜: 仙台白菜高騰）</option>
@@ -140,6 +197,7 @@
         <div class="control-group">
             <label>📍 局地環境イベント（収量変動）を選ぶ</label>
             <select id="local-select">
+                <option value="random_per_team">🎲 班ごとに別々の災害</option>
                 <option value="normal">通常（変動なし）</option>
                 <option value="pest">🐛 害虫発生（収量減・農薬で防御可）</option>
                 <option value="disease">🦠 病気蔓延（特定作物全滅）</option>
@@ -150,15 +208,22 @@
             </select>
         </div>
 
-        <button id="broadcast-btn">📡 このイベントを全班へ一斉配信する</button>
+        <button id="broadcast-btn" class="btn-red">📡 このイベントを全班へ一斉配信する</button>
 
         <div id="log-area">
             // 通信ログ<br>
         </div>
 
         <hr style="border: 1px dashed #475569; margin: 30px 0;">
-        <h2 style="color: #fbbf24; text-align: center; margin-top: 0;">🏆 最終成績ランキング</h2>
         
+        <h2 style="color: #4ade80; text-align: center; margin-top: 0;">📊 データ収集・分析</h2>
+        <button id="download-all-logs-btn" class="btn-green">
+            📥 全班の3年分PDCAログを一括CSV出力
+        </button>
+
+        <hr style="border: 1px dashed #475569; margin: 30px 0;">
+
+        <h2 style="color: #fbbf24; text-align: center; margin-top: 0;">🏆 最終成績ランキング</h2>
         <button id="fetch-ranking-btn" class="btn-blue">🔄 最新のランキングを取得する</button>
 
         <table>
