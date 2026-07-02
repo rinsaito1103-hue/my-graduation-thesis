@@ -51,7 +51,8 @@ const gameContainer = document.getElementById("game-container");
 const resultScreen = document.getElementById("result-screen");
 
 const nameInput = document.getElementById("name-input");
-const startBtn = document.getElementById("start-game-btn");
+const startBeginnerBtn = document.getElementById("start-beginner-btn"); // 
+const startAdvancedBtn = document.getElementById("start-advanced-btn"); //
 const beginBusinessBtn = document.getElementById("begin-business-btn");
 const endYearBtn = document.getElementById("end-year-btn");
 
@@ -497,15 +498,22 @@ function updateSetupFinancialBanner() {
 }
 
 // --- 4. 画面遷移：タイトル ➔ セットアップ ---
-startBtn.addEventListener("click", () => {
+function startGame(config) { // 🌟 引数を config オブジェクトに変更
     const name = nameInput.value.trim();
     if (!name) { alert("名前を入力してください！"); return; }
+    
     gameState.playerName = name;
+    gameState.difficulty = config.id; // beginner または advanced
+
+    // 🌟 分離した設定ファイルから初期資金を読み込んでセットする
+    gameState.money = config.startMoney;
+    gameState.history[0].money = config.startMoney;
 
     const randomIndex = Math.floor(Math.random() * LAND_MASTER.length);
     gameState.currentLand = LAND_MASTER[randomIndex];
     const land = gameState.currentLand;
-
+    
+    // 農地の枚数分だけ、土壌ダメージのカウンターを用意する（連作障害用）
     gameState.landHistory = Array(land.totalCards).fill(null).map(() => ({ 
         lastFamily: null, 
         consecutiveCounter: 0 
@@ -526,7 +534,11 @@ startBtn.addEventListener("click", () => {
 
     startScreen.classList.add("hidden");
     landRevealScreen.classList.remove("hidden");
-});
+}
+
+// 🌟 ボタンを押したときに、作成した設定オブジェクトを渡す
+startBeginnerBtn.addEventListener("click", () => startGame(CONFIG_BEGINNER));
+startAdvancedBtn.addEventListener("click", () => startGame(CONFIG_ADVANCED));
 
 // 土地公開 → 戦略設定へ進むボタン（新規追加）
 document.getElementById("land-reveal-proceed-btn").addEventListener("click", () => {

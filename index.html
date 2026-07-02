@@ -16,8 +16,18 @@
                 <label for="name-input">プレイヤー名（班番号）：</label>
                 <input type="text" id="name-input" placeholder="例：1班_斎藤" maxlength="15">
             </div>
-            <button id="start-game-btn">ゲームスタート</button>
-        </div>
+           <div class="difficulty-group" style="margin-top: 15px; margin-bottom: 20px; text-align: left;">
+                <label style="font-size: 14px; font-weight: bold; color: #34495e; display: block; margin-bottom: 8px;">難易度を選択：</label>
+                <div style="display: flex; gap: 10px;">
+                    <button id="start-beginner-btn" style="flex: 1; background-color: #2ecc71; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🌱 初心者用スタート</button>
+                    <button id="start-advanced-btn" style="flex: 1; background-color: #e74c3c; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🔥 上級者用スタート</button>
+                </div>
+                <p style="font-size: 11px; color: #7f8c8d; margin-top: 10px; line-height: 1.4;">
+                    【🌱 初心者】初期資金1.5億円。最新施設を揃えやすく、リスクを安全に学べます。<br>
+                    【🔥 上級者】初期資金1億円のシビアでリアルな経営環境です。
+                </p>
+            </div>
+            </div>
     </div>
 
     <!-- ===== 土地公開スクリーン（新規追加） ===== -->
@@ -253,6 +263,8 @@
     <script src="markets.js"></script>
     <script src="events.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config_beginner.js"></script>
+    <script src="config_advanced.js"></script>
     
     <script src="game.js?v=22"></script> 
 </body>
