@@ -57,7 +57,7 @@ body {
 
 .main-title { font-size: 32px; color: #2c3e50; margin: 0 0 5px 0; }
 .sub-title { font-size: 18px; color: #2ecc71; display: block; }
-.game-desc { font-size: 12px; color: #7f8c8d; margin-bottom: 30px; }
+.game-desc { font-size: 12px; color: #033268; margin-bottom: 30px; }
 
 /* 共通入力グループ（タイトル画面用） */
 .input-group {
@@ -231,6 +231,45 @@ input[type="text"] {
     margin-right: 6px !important;
     transform: scale(1.0) !important;
     flex-shrink: 0; /* チェックボックス自体が横に潰れるのを防ぐ */
+}
+
+/* 💡 農業資材の説明ツールチップ（カーソルを乗せると表示、既存UIには影響なし） */
+.land-strategy-card label.asset-label {
+    position: relative;
+}
+
+.asset-label[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0;
+    bottom: 100%;
+    margin-bottom: 8px;
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 1.5;
+    white-space: normal;
+    width: 220px;
+    max-width: 60vw;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 999;
+    pointer-events: none;
+}
+
+.asset-label[data-tooltip]:hover::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    bottom: 100%;
+    margin-bottom: 2px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+    z-index: 999;
+    pointer-events: none;
 }
 
 /* 💰 各農地のリアルタイム投資小計カウンター */
@@ -618,12 +657,11 @@ input[type="text"] {
 /* ==========================================================================
    🌟 追加：PDCAログモーダル用スタイル
    ========================================================================== */
-/* フローティングボタン（右下固定） */
-#log-toggle-btn {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
-    z-index: 990;
+/* サイドバー内に設置（通期財務サマリーの下）／最終結果画面にも同じ見た目で設置 */
+#log-toggle-btn,
+#log-toggle-btn-result {
+    width: 100%;
+    box-sizing: border-box;
     padding: 15px 25px;
     background-color: #2e75b6;
     color: #fff;
@@ -635,7 +673,12 @@ input[type="text"] {
     font-size: 15px;
     transition: all 0.2s ease;
 }
-#log-toggle-btn:hover { background-color: #1e40af; transform: translateY(-3px); }
+#log-toggle-btn-result {
+    width: auto;
+    display: inline-block;
+    padding: 15px 30px;
+}
+#log-toggle-btn:hover, #log-toggle-btn-result:hover { background-color: #1e40af; transform: translateY(-3px); }
 
 /* モーダルの背景と本体 */
 .modal-overlay {
@@ -676,3 +719,43 @@ input[type="text"] {
 .pdca-block { background: #f1f5f9; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
 .pdca-block strong { color: #475569; display: block; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
 .pdca-block ul { margin: 0; padding-left: 20px; font-size: 13px; color: #334155; }
+
+/* 🌟 ステータス表示エリア（サイドバー内・通期財務サマリーの下） */
+#status-bar {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 12px;
+    font-weight: bold;
+    color: #475569;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+/* 🌟 タイトル画面のボタンレイアウト改善 */
+.difficulty-group {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    text-align: left;
+}
+.difficulty-buttons {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+.difficulty-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    transition: transform 0.1s;
+}
+.difficulty-buttons button:hover {
+    transform: scale(1.02);
+}

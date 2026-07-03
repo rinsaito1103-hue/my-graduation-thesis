@@ -23,25 +23,7 @@ const SUPABASE_URL = 'https://lozwsuhkcbuzbdynnyml.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvendzdWhrY2J1emJkeW5ueW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDg1MzgsImV4cCI6MjA5NjEyNDUzOH0.bmk4mz5NyNUqWlImBqWBRISQAzJq3GF6Ply7mG3yNAc'; // ※ご自身のキー
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const channel = supabaseClient.channel('nototore-room');
 
-// 先生からの電波を常に傍受する
-channel.on('broadcast', { event: 'yearly_events' }, payload => {
-    console.log("📡 先生からイベントを受信しました！", payload);
-    
-    receivedGlobalEventId = payload.payload.global_id;
-    let localId = payload.payload.local_id;
-
-    // 🌟追加：局地イベントが「班ごとにランダム」の指示だった場合、学生のPCでルーレットを回す
-    if (localId === "random_per_team") {
-        // events.js にある LOCAL_EVENTS の中からランダムに1つ選ぶ
-        const randIdx = Math.floor(Math.random() * LOCAL_EVENTS.length);
-        localId = LOCAL_EVENTS[randIdx].id;
-    }
-
-    receivedLocalEventId = localId; // 確定したイベントIDを保存
-    checkAndEnableEndYearBtn(); 
-}).subscribe();
 
 // --- 2. 画面要素（DOM）の取得 ---
 const startScreen = document.getElementById("start-screen");
@@ -109,6 +91,12 @@ function getAssetCostLabel(assetId) {
     return `＋${(cost / 10000).toLocaleString()}万`;
 }
 
+// ツールチップ用：資材の説明文をASSET_MASTERから取得
+function getAssetDesc(assetId) {
+    const asset = ASSET_MASTER.find(a => a.id === assetId);
+    return asset ? asset.desc : "";
+}
+
 // --- 3. UIの動的生成ロジック ---
 function generateLandStrategyUI() {
     const cardCount = gameState.currentLand.totalCards; 
@@ -122,19 +110,17 @@ function generateLandStrategyUI() {
 
         let workerSelectsHtml = "";
         for (let w = 1; w <= reqWorkers; w++) {
-            let savedWorkerId = (saved && saved.employeeIds && saved.employeeIds[w - 1]) ? saved.employeeIds[w - 1] : "beginner";
-            if (!saved) {
-                if (w === 2) savedWorkerId = "experienced";
-                if (w === 3) savedWorkerId = "veteran";
-            }
+            let savedWorkerId = (saved && saved.employeeIds && saved.employeeIds[w - 1]) ? saved.employeeIds[w - 1] : "";
             
             // 安全な変数にしてから埋め込む
+            const isUnselected = savedWorkerId === '' ? 'selected' : '';
             const isBeginner = savedWorkerId === 'beginner' ? 'selected' : '';
             const isExperienced = savedWorkerId === 'experienced' ? 'selected' : '';
             const isVeteran = savedWorkerId === 'veteran' ? 'selected' : '';
 
             workerSelectsHtml += `
                 <select class="land-worker-select" data-land-idx="${i}" onchange="calculateLiveCardCost(${i})">
+                    <option value="" ${isUnselected}>スタッフ${w}: -- 未選択 --</option>
                     <option value="beginner" ${isBeginner}>スタッフ${w}:初心者 (200万)</option>
                     <option value="experienced" ${isExperienced}>スタッフ${w}:経験者 (600万)</option>
                     <option value="veteran" ${isVeteran}>スタッフ${w}:ベテラン (800万)</option>
@@ -142,11 +128,23 @@ function generateLandStrategyUI() {
             `;
         }
 
-        const savedCropId = saved ? saved.cropId : (i === 1 ? "tomato" : "hakusai");
-        const savedMarketId = saved ? saved.marketId : "JA";
+        const savedCropId = saved ? saved.cropId : "";
+        const savedMarketId = saved ? saved.marketId : "";
 
-        const hasMachinery = saved && saved.assetIds ? saved.assetIds.includes("machinery") : false;
-        const hasGreenhouse = saved && saved.assetIds ? saved.assetIds.includes("greenhouse") : false;
+        // 🚜高性能農機・🏠ビニールハウスは「有効期限」ベースで自動継続判定する
+        const landHist = gameState.landHistory[i - 1] || {};
+        const machineryActive = !!(landHist.machineryExpireYear && gameState.year <= landHist.machineryExpireYear);
+        const greenhouseActive = !!(landHist.greenhouseExpireYear && gameState.year <= landHist.greenhouseExpireYear);
+
+        const hasMachinery = machineryActive;
+        const hasGreenhouse = greenhouseActive;
+        const machineryCheckboxAttr = machineryActive ? "checked disabled" : "";
+        const greenhouseCheckboxAttr = greenhouseActive ? "checked disabled" : "";
+        const machineryLabelStyle = machineryActive ? "style='color: #64748b; font-weight: bold; background: #f1f5f9; padding: 2px 5px; border-radius:3px; cursor: not-allowed;'" : "";
+        const greenhouseLabelStyle = greenhouseActive ? "style='color: #64748b; font-weight: bold; background: #f1f5f9; padding: 2px 5px; border-radius:3px; cursor: not-allowed;'" : "";
+        const machineryActiveNote = machineryActive ? ` <span style="color:#16a34a;">✅有効中(第${landHist.machineryExpireYear}年目まで)</span>` : "";
+        const greenhouseActiveNote = greenhouseActive ? ` <span style="color:#16a34a;">✅有効中(第${landHist.greenhouseExpireYear}年目まで)</span>` : "";
+
         const hasPesticide = saved && saved.assetIds ? saved.assetIds.includes("pesticide") : false;
         const hasFertilizer = saved && saved.assetIds ? saved.assetIds.includes("fertilizer") : false;
         const hasOrganic = saved && saved.assetIds ? saved.assetIds.includes("organic") : false;
@@ -164,6 +162,7 @@ function generateLandStrategyUI() {
                     <div class="land-strategy-card-left">
                         <label>🌾 作付する作物:</label>
                         <select class="land-crop-select" onchange="calculateLiveCardCost(${i})">
+                            <option value="" ${savedCropId === '' ? 'selected' : ''}>-- 未選択 --</option>
                             <option value="hakusai" ${savedCropId === 'hakusai' ? 'selected' : ''}>🥬 S:仙台白菜 (8,000円)</option>
                             <option value="artichoke" ${savedCropId === 'artichoke' ? 'selected' : ''}>🌱 S:アーティチョーク (12,000円)</option>
                             <option value="tomato" ${savedCropId === 'tomato' ? 'selected' : ''}>🍅 A:トマト (10,000円)</option>
@@ -175,6 +174,7 @@ function generateLandStrategyUI() {
                         </select>
                         <label style="margin-top: 5px;">🏪 出荷・販売先:</label>
                         <select class="land-market-select" onchange="calculateLiveCardCost(${i})">
+                            <option value="" ${savedMarketId === '' ? 'selected' : ''}>-- 未選択 --</option>
                             <option value="JA" ${savedMarketId === 'JA' ? 'selected' : ''}>農協 [全作物OK]</option>
                             <option value="direct_store" ${savedMarketId === 'direct_store' ? 'selected' : ''}>直売所 [数量くじ]</option>
                             <option value="restaurant" ${savedMarketId === 'restaurant' ? 'selected' : ''}>レストラン [上限200kg]</option>
@@ -190,12 +190,12 @@ function generateLandStrategyUI() {
                         </div>
                         <label style="margin-top: 2px;">🛠️ 農業資材・施設（最大3つまで）:</label>
                         <div class="asset-mini-grid">
-                            <label class="asset-label"><input type="checkbox" class="asset-machinery" ${hasMachinery ? "checked" : ""} value="machinery" onchange="handleAssetExclusion(this, ${i}, 'machinery')">🚜高性能農機 (${getAssetCostLabel("machinery")})</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-house" ${hasGreenhouse ? "checked" : ""} value="greenhouse" onchange="handleAssetExclusion(this, ${i}, 'greenhouse')">🏠ハウス施設 (${getAssetCostLabel("greenhouse")})</label>
-                            <label class="asset-label" id="label-it-${i}" ${itLabelStyle}><input type="checkbox" class="asset-it" ${itCheckboxAttr} ${isItSavedChecked} value="it_system" onchange="handleAssetExclusion(this, ${i}, 'it_system')">💻ITシステム (${getAssetCostLabel("it_system")})</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-pesticide" ${hasPesticide ? "checked" : ""} value="pesticide" onchange="handleAssetExclusion(this, ${i}, 'pesticide')">🧪特定農薬 (${getAssetCostLabel("pesticide")})</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-fertilizer" ${hasFertilizer ? "checked" : ""} value="fertilizer" onchange="handleAssetExclusion(this, ${i}, 'fertilizer')">🧪化学肥料 (${getAssetCostLabel("fertilizer")})</label>
-                            <label class="asset-label"><input type="checkbox" class="asset-organic" ${hasOrganic ? "checked" : ""} value="organic" onchange="handleAssetExclusion(this, ${i}, 'organic')">🌿 有機栽培資材 (${getAssetCostLabel("organic")})</label>
+                            <label class="asset-label" data-tooltip="${getAssetDesc('machinery')}" id="label-machinery-${i}" ${machineryLabelStyle}><input type="checkbox" class="asset-machinery" ${hasMachinery ? "checked" : ""} ${machineryCheckboxAttr} value="machinery" onchange="handleAssetExclusion(this, ${i}, 'machinery')">🚜高性能農機 (${getAssetCostLabel("machinery")})${machineryActiveNote}</label>
+                            <label class="asset-label" data-tooltip="${getAssetDesc('greenhouse')}" id="label-house-${i}" ${greenhouseLabelStyle}><input type="checkbox" class="asset-house" ${hasGreenhouse ? "checked" : ""} ${greenhouseCheckboxAttr} value="greenhouse" onchange="handleAssetExclusion(this, ${i}, 'greenhouse')">🏠ハウス施設 (${getAssetCostLabel("greenhouse")})${greenhouseActiveNote}</label>
+                            <label class="asset-label" data-tooltip="${getAssetDesc('it_system')}" id="label-it-${i}" ${itLabelStyle}><input type="checkbox" class="asset-it" ${itCheckboxAttr} ${isItSavedChecked} value="it_system" onchange="handleAssetExclusion(this, ${i}, 'it_system')">💻ITシステム (${getAssetCostLabel("it_system")})</label>
+                            <label class="asset-label" data-tooltip="${getAssetDesc('pesticide')}"><input type="checkbox" class="asset-pesticide" ${hasPesticide ? "checked" : ""} value="pesticide" onchange="handleAssetExclusion(this, ${i}, 'pesticide')">🧪特定農薬 (${getAssetCostLabel("pesticide")})</label>
+                            <label class="asset-label" data-tooltip="${getAssetDesc('fertilizer')}"><input type="checkbox" class="asset-fertilizer" ${hasFertilizer ? "checked" : ""} value="fertilizer" onchange="handleAssetExclusion(this, ${i}, 'fertilizer')">🧪化学肥料 (${getAssetCostLabel("fertilizer")})</label>
+                            <label class="asset-label" data-tooltip="${getAssetDesc('organic')}"><input type="checkbox" class="asset-organic" ${hasOrganic ? "checked" : ""} value="organic" onchange="handleAssetExclusion(this, ${i}, 'organic')">🌿 有機栽培資材 (${getAssetCostLabel("organic")})</label>
                         </div>
                     </div>
                 </div>
@@ -346,8 +346,10 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     else if (cropId === "japanese_parsley") seedCost = 8000;
 
     let assetCost = 0;
-    if (card.querySelector(".asset-machinery")?.checked) assetCost += getAssetCost("machinery");
-    if (card.querySelector(".asset-house")?.checked) assetCost += getAssetCost("greenhouse");
+    const machineryCheckbox = card.querySelector(".asset-machinery");
+    if (machineryCheckbox?.checked && !machineryCheckbox.disabled) assetCost += getAssetCost("machinery");
+    const greenhouseCheckbox = card.querySelector(".asset-house");
+    if (greenhouseCheckbox?.checked && !greenhouseCheckbox.disabled) assetCost += getAssetCost("greenhouse");
     const itCheckbox = card.querySelector(".asset-it");
     if (itCheckbox?.checked && !itCheckbox.disabled) assetCost += getAssetCost("it_system");
     if (card.querySelector(".asset-pesticide")?.checked) assetCost += getAssetCost("pesticide");
@@ -498,12 +500,29 @@ function updateSetupFinancialBanner() {
 }
 
 // --- 4. 画面遷移：タイトル ➔ セットアップ ---
-function startGame(config) { // 🌟 引数を config オブジェクトに変更
+function startGame(config) {
+    const roomId = document.getElementById("room-id-input").value.trim();
     const name = nameInput.value.trim();
+    if (!roomId) { alert("ルームIDを入力してください！"); return; }
     if (!name) { alert("名前を入力してください！"); return; }
     
+    gameState.roomId = roomId; // 🌟ルームIDを保存
     gameState.playerName = name;
-    gameState.difficulty = config.id; // beginner または advanced
+    gameState.difficulty = config.id;
+
+    // 🌟ここに追加：入力されたルームID専用の通信アンテナを立てる
+    const channel = supabaseClient.channel(`room-${roomId}`);
+    channel.on('broadcast', { event: 'yearly_events' }, payload => {
+        console.log("📡 先生からイベントを受信しました！", payload);
+        receivedGlobalEventId = payload.payload.global_id;
+        let localId = payload.payload.local_id;
+        if (localId === "random_per_team") {
+            const randIdx = Math.floor(Math.random() * LOCAL_EVENTS.length);
+            localId = LOCAL_EVENTS[randIdx].id;
+        }
+        receivedLocalEventId = localId;
+        checkAndEnableEndYearBtn(); 
+    }).subscribe();
 
     // 🌟 分離した設定ファイルから初期資金を読み込んでセットする
     gameState.money = config.startMoney;
@@ -516,7 +535,9 @@ function startGame(config) { // 🌟 引数を config オブジェクトに変�
     // 農地の枚数分だけ、土壌ダメージのカウンターを用意する（連作障害用）
     gameState.landHistory = Array(land.totalCards).fill(null).map(() => ({ 
         lastFamily: null, 
-        consecutiveCounter: 0 
+        consecutiveCounter: 0,
+        machineryExpireYear: null,   // 🚜高性能農機：有効期限（この年まで有効）
+        greenhouseExpireYear: null   // 🏠ビニールハウス：有効期限（この年まで有効）
     }));
 
     // 土地公開画面に情報をセット
@@ -531,6 +552,14 @@ function startGame(config) { // 🌟 引数を config オブジェクトに変�
     document.getElementById("land-reveal-workers").textContent =
         `1年目:${land.requiredWorkers.year1}人 → 2年目:${land.requiredWorkers.year2}人 → 3年目:${land.requiredWorkers.year3}人`;
     document.getElementById("land-reveal-cards").textContent = `${land.totalCards}枚`;
+
+    startScreen.classList.add("hidden");
+    landRevealScreen.classList.remove("hidden");
+
+    // 🌟 ステータスバーを更新して表示
+    document.getElementById("display-room-id").textContent = gameState.roomId;
+    document.getElementById("display-difficulty").textContent = config.name;
+    document.getElementById("status-bar").classList.remove("hidden");
 
     startScreen.classList.add("hidden");
     landRevealScreen.classList.remove("hidden");
@@ -559,6 +588,18 @@ let currentYearExpenses = 0;
 let currentYearStartMoney = 0; 
 
 beginBusinessBtn.addEventListener("click", () => {
+    const cardsForValidation = document.querySelectorAll(".land-strategy-card");
+    for (let card of cardsForValidation) {
+        const idx = card.getAttribute("data-idx");
+        const cropVal = card.querySelector(".land-crop-select")?.value;
+        const marketVal = card.querySelector(".land-market-select")?.value;
+        const workerVals = [...card.querySelectorAll(".land-worker-select")].map(sel => sel.value);
+
+        if (!cropVal) { alert(`⚠️ ${idx}枚目の農地で「作付する作物」が未選択です。選択してください。`); return; }
+        if (!marketVal) { alert(`⚠️ ${idx}枚目の農地で「出荷・販売先」が未選択です。選択してください。`); return; }
+        if (workerVals.some(v => !v)) { alert(`⚠️ ${idx}枚目の農地で未選択の「配置従業員」があります。すべて選択してください。`); return; }
+    }
+
     gameState.landStrategies = [];
     let totalInvestment = 0; 
 
@@ -581,8 +622,33 @@ beginBusinessBtn.addEventListener("click", () => {
             .map(box => ASSET_MASTER.find(a => a.id === box.value))
             .filter(Boolean);
 
+        // 🚜高性能農機・🏠ビニールハウスは「有効期限」を農地ごとに記録・参照する
+        const cardIdx = parseInt(card.getAttribute("data-idx")) - 1;
+        if (!gameState.landHistory[cardIdx]) {
+            gameState.landHistory[cardIdx] = { lastFamily: null, consecutiveCounter: 0, machineryExpireYear: null, greenhouseExpireYear: null };
+        }
+        const landHistForAsset = gameState.landHistory[cardIdx];
+
         employees.forEach(e => totalInvestment += e.cost);
-        assets.forEach(asset => totalInvestment += asset.cost);
+        assets.forEach(asset => {
+            if (asset.id === "machinery") {
+                const wasActive = landHistForAsset.machineryExpireYear && gameState.year <= landHistForAsset.machineryExpireYear;
+                if (!wasActive) {
+                    totalInvestment += asset.cost; // 新規購入時のみ課金
+                    landHistForAsset.machineryExpireYear = gameState.year + asset.duration - 1;
+                }
+                // 有効期間中（継続効果）は再課金しない
+            } else if (asset.id === "greenhouse") {
+                const wasActive = landHistForAsset.greenhouseExpireYear && gameState.year <= landHistForAsset.greenhouseExpireYear;
+                if (!wasActive) {
+                    totalInvestment += asset.cost; // 新規購入時のみ課金
+                    landHistForAsset.greenhouseExpireYear = gameState.year + asset.duration - 1;
+                }
+                // 有効期間中（継続効果）は再課金しない
+            } else {
+                totalInvestment += asset.cost;
+            }
+        });
         
         if (cropId === "cabbage") totalInvestment += 5000;
         else if (cropId === "corn") totalInvestment += 10000;
@@ -843,10 +909,12 @@ endYearBtn.addEventListener("click", () => {
         
         actualYieldKg = actualYieldKg * replantMultiplier;
         
-        // 来年に向けて、確定した歴史を保存する
+        // 来年に向けて、確定した歴史を保存する（🚜🏠 資材の有効期限は保持したまま更新）
         gameState.landHistory[index] = {
             lastFamily: crop.family,
-            consecutiveCounter: tempCounter
+            consecutiveCounter: tempCounter,
+            machineryExpireYear: hist.machineryExpireYear || null,
+            greenhouseExpireYear: hist.greenhouseExpireYear || null
         };
 
         let techShortageLabel = finalTechShortage ? "⚠️技術不足で出荷不可" : "";
@@ -985,6 +1053,7 @@ endYearBtn.addEventListener("click", () => {
     });
 
     const logDataToDB = {
+        room_id: gameState.roomId,
         player_name: gameState.playerName,
         year: gameState.year,
         investments: allAssets.length > 0 ? allAssets.join('・') : 'なし',
@@ -1087,6 +1156,7 @@ function showFinalResult() {
 
     supabaseClient.from('scores').insert([
         { 
+            room_id: gameState.roomId,
             player_name: gameState.playerName, 
             final_money: gameState.money 
         }
@@ -1290,21 +1360,21 @@ function renderLogs() {
             <h3 style="margin-top:0; color:#1e40af; border-bottom:2px solid #cbd5e1; padding-bottom:5px;">📅 第 ${log.year} 年目の経営実績</h3>
             <div class="pdca-grid">
                 <div class="pdca-block">
-                    <strong>📝 Plan (投資・人員配置)</strong>
+                    <strong>📝 投資・人員配置</strong>
                     <ul>
                         <li>導入した資材: ${log.investments.length > 0 ? log.investments.join(', ') : 'なし'}</li>
                         <li>雇用した従業員: 計 ${log.staffCount} 名</li>
                     </ul>
                 </div>
                 <div class="pdca-block">
-                    <strong>🚜 Do (環境・発生イベント)</strong>
+                    <strong>🚜環境・発生イベント</strong>
                     <ul>
                         <li>全体環境: ${log.globalEvent}</li>
                         <li>局地環境: ${log.localEvent}</li>
                     </ul>
                 </div>
                 <div class="pdca-block" style="grid-column: span 2;">
-                    <strong>📊 Check (財務結果)</strong>
+                    <strong>📊 財務結果</strong>
                     <table style="width:100%; font-size:14px; text-align:left; border-collapse: collapse;">
                         <tr>
                             <td style="padding: 4px;">売上高: ¥${log.sales.toLocaleString()}</td>
@@ -1314,7 +1384,7 @@ function renderLogs() {
                     </table>
                 </div>
                 <div class="pdca-block" style="grid-column: span 2; background: #fdfae6; border-left: 4px solid #f59e0b;">
-                    <strong>💡 Action (システムによる要因分析)</strong>
+                    <strong>💡 システムによる要因分析</strong>
                     <p style="margin:5px 0 0 0; font-size:12px; line-height:1.6; color: #334155; white-space: pre-wrap;">${log.feedback}</p>
                 </div>
             </div>

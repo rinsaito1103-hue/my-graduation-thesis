@@ -9,25 +9,26 @@
 
     <div id="start-screen">
         <div class="overlay"></div>
-        <div class="title-content">
-            <h1 class="main-title">農トレ <span class="sub-title">Web Edition</span></h1>
-            <p class="game-desc">〜 近代農業の経営シミュレーション 〜</p>
-            <div class="input-group">
-                <label for="name-input">プレイヤー名（班番号）：</label>
-                <input type="text" id="name-input" placeholder="例：1班_斎藤" maxlength="15">
+        <div class="title-content" style="z-index: 10; width: 90%; max-width: 400px; text-align: center;">
+            <h1 class="main-title" style="font-size: 3rem; margin-bottom: 10px;">農トレ</h1>
+            <p class="game-desc" style="margin-bottom: 20px;">〜 近代農業の経営シミュレーション 〜</p>
+            
+            <div class="input-group" style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <label for="room-id-input" style="display:block; font-weight:bold; margin-bottom:5px;">🔑 ルームID：</label>
+                <input type="text" id="room-id-input" placeholder="例：zemi2026" style="width:100%; padding:8px; margin-bottom:10px;">
+                
+                <label for="name-input" style="display:block; font-weight:bold; margin-bottom:5px;">👤 プレイヤー名：</label>
+                <input type="text" id="name-input" placeholder="例：1班_斎藤" maxlength="15" style="width:100%; padding:8px;">
             </div>
-           <div class="difficulty-group" style="margin-top: 15px; margin-bottom: 20px; text-align: left;">
+
+            <div class="difficulty-group">
                 <label style="font-size: 14px; font-weight: bold; color: #34495e; display: block; margin-bottom: 8px;">難易度を選択：</label>
-                <div style="display: flex; gap: 10px;">
-                    <button id="start-beginner-btn" style="flex: 1; background-color: #2ecc71; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🌱 初心者用スタート</button>
-                    <button id="start-advanced-btn" style="flex: 1; background-color: #e74c3c; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🔥 上級者用スタート</button>
+                <div class="difficulty-buttons">
+                    <button id="start-beginner-btn" style="background-color: #2ecc71;">🌱 初心者</button>
+                    <button id="start-advanced-btn" style="background-color: #e74c3c;">🔥 上級者</button>
                 </div>
-                <p style="font-size: 11px; color: #7f8c8d; margin-top: 10px; line-height: 1.4;">
-                    【🌱 初心者】初期資金1.5億円。最新施設を揃えやすく、リスクを安全に学べます。<br>
-                    【🔥 上級者】初期資金1億円のシビアでリアルな経営環境です。
-                </p>
             </div>
-            </div>
+        </div>
     </div>
 
     <!-- ===== 土地公開スクリーン（新規追加） ===== -->
@@ -103,6 +104,13 @@
                         </div>
                     </div>
                 </div>
+
+                <div id="status-bar" class="hidden">
+                    🔑 ID: <span id="display-room-id">-</span> | 
+                    🌱 難易度: <span id="display-difficulty">-</span>
+                </div>
+
+                <button id="log-toggle-btn" onclick="openLogModal()">📊 経営履歴（PDCA）</button>
             </div>
 
             <div class="setup-main-content" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
@@ -234,14 +242,14 @@
                 <p id="result-rank" style="font-size: 24px; font-weight: bold; color: #d94111; margin: 10px 0;">---</p>
                 <p id="result-comment">評価コメント</p>
             </div>
-            
+
+            <button id="log-toggle-btn-result" onclick="openLogModal()" style="margin-bottom: 15px;">📊 経営履歴（PDCA）を見る</button>
+            <br>
             <button onclick="window.location.reload();" style="background: #28a745; color: white; padding: 12px 35px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
                 タイトルに戻って再挑戦
             </button>
         </div>
     </div>
-
-    <button id="log-toggle-btn" onclick="openLogModal()">📊 経営履歴（PDCA）</button>
 
     <div id="log-modal" class="modal-overlay">
         <div class="modal-content">
@@ -267,5 +275,6 @@
     <script src="config_advanced.js"></script>
     
     <script src="game.js?v=22"></script> 
+
 </body>
 </html>
