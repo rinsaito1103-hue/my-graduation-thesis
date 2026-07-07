@@ -2,279 +2,336 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>営農型農業経営シミュレーション「農トレ」</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👨‍🏫 農トレ - 管理者ダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        /* =========================================
+           管理者用ダッシュボード 1画面レイアウト
+        ========================================= */
+        body {
+            margin: 0; padding: 0;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #334155;
+            height: 100vh;
+            overflow: hidden; /* 画面全体のスクロールを禁止 */
+        }
+
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 15px;
+            box-sizing: border-box;
+            gap: 15px;
+        }
+
+        /* 🟢 ヘッダー */
+        .admin-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #fff; padding: 12px 20px;
+            border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+        .admin-header h1 { margin: 0; font-size: 20px; color: #1e40af; }
+        .header-controls { display: flex; gap: 15px; align-items: center; }
+        .room-input { padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 14px; font-weight: bold; width: 150px; }
+        .btn { padding: 8px 15px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; color: #fff; font-size: 14px; transition: 0.2s; }
+        .btn-blue { background: #3b82f6; } .btn-blue:hover { background: #2563eb; }
+        .btn-green { background: #10b981; } .btn-green:hover { background: #059669; }
+        .btn-red { background: #ef4444; } .btn-red:hover { background: #dc2626; }
+        
+        #connection-status { font-size: 12px; font-weight: bold; color: #64748b; }
+
+        /* 🟢 メイン画面（左右分割） */
+        .admin-main {
+            display: grid;
+            grid-template-columns: 380px 1fr; /* 左: 操作・ランキング、右: グラフ */
+            gap: 15px;
+            flex-grow: 1; 
+            overflow: hidden; 
+        }
+
+        /* 🟢 左カラム */
+        .left-col { display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
+        .panel { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #1e40af; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+        
+        .control-group { margin-bottom: 12px; }
+        .control-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #475569; }
+        .control-group select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 14px; }
+
+        /* ランキング表 */
+        .ranking-panel { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .table-wrap { flex-grow: 1; overflow-y: auto; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f8fafc; padding: 8px; text-align: left; position: sticky; top: 0; box-shadow: 0 1px 0 #cbd5e1; color: #64748b; }
+        td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
+        .rank-icon { font-size: 16px; font-weight: bold; }
+
+        /* 🟢 右カラム */
+        .right-col { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; }
+        .chart-wrap { flex-grow: 1; position: relative; width: 100%; }
+    </style>
 </head>
 <body>
 
-    <div id="start-screen">
-        <div class="overlay"></div>
-        <div class="title-content" style="z-index: 10; width: 90%; max-width: 400px; text-align: center;">
-            <h1 class="main-title" style="font-size: 3rem; margin-bottom: 10px;">農トレ</h1>
-            <p class="game-desc" style="margin-bottom: 20px;">〜 近代農業の経営シミュレーション 〜</p>
+    <div class="dashboard-container">
+        
+        <header class="admin-header">
+            <h1>🖥️ 農トレ 管理者ダッシュボード</h1>
+            <div class="header-controls">
+                <span id="connection-status">🔴 未接続</span>
+                <input type="text" id="room-id-input" class="room-input" placeholder="ルームID (例: zemi)">
+                <button id="connect-btn" class="btn btn-blue">🔗 接続・更新</button>
+                <button id="download-csv-btn" class="btn btn-green">📥 CSV出力</button>
+            </div>
+        </header>
+
+        <main class="admin-main">
             
-            <div class="input-group" style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <label for="room-id-input" style="display:block; font-weight:bold; margin-bottom:5px;">🔑 ルームID：</label>
-                <input type="text" id="room-id-input" placeholder="例：zemi2026" style="width:100%; padding:8px; margin-bottom:10px;">
+            <div class="left-col">
+                <div class="panel">
+                    <h3>📢 イベント一斉配信</h3>
+                    <div class="control-group">
+                        <label>🌍 全体環境イベント (価格変動)</label>
+                        <select id="global-select">
+                            <option value="random">🎲 ランダム（全班共通で何かが発生）</option>
+                            <option value="normal" selected>通常（変動なし）</option>
+                            <option value="boom_exotic">📈 ブーム（外来野菜: アーティチョーク高騰）</option>
+                            <option value="boom_traditional">📈 ブーム（伝統野菜: 仙台白菜高騰）</option>
+                            <option value="rival">📉 ライバル出現（六次産業価格下落）</option>
+                            <option value="bumper_crop">📉 豊作貧乏（一般的な野菜の価格暴落）</option>
+                            <option value="poor_crop">📈 全国的な凶作（価格急高騰）</option>
+                            <option value="fuel_surge">💸 燃料・資材コスト高騰（費用増加）</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>📍 局地環境イベント (収量変動)</label>
+                        <select id="local-select">
+                            <option value="random_per_team">🎲 班ごとにランダム（明暗が分かれる）</option>
+                            <option value="normal" selected>平和な気候（変動なし）</option>
+                            <option value="pest">🐛 害虫発生（農薬で防御可能）</option>
+                            <option value="disease">🦠 病気発生（防御不可・被害大）</option>
+                            <option value="heavy_rain">☔ 豪雨・台風（ハウスで防御可能）</option>
+                            <option value="bad_growth">🌫️ 生育不良（肥料で防御可能）</option>
+                            <option value="animal_damage">🐗 獣害（全滅・ハウス破壊）</option>
+                            <option value="good_weather">☀️ 奇跡の好天候（収穫量2倍）</option>
+                        </select>
+                    </div>
+                    <button id="broadcast-btn" class="btn btn-red" style="width: 100%;">🚀 イベントを全班に送信する</button>
+                </div>
+
+                <div class="panel ranking-panel">
+                    <h3>🏆 リアルタイム順位</h3>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>順位</th><th>班名</th><th>年度</th><th style="text-align: right;">総資金</th></tr>
+                            </thead>
+                            <tbody id="ranking-tbody">
+                                <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">ルームに接続してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #1e40af;">📈 資金推移チャート</h3>
+                <div class="chart-wrap">
+                    <canvas id="trend-chart"></canvas>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // 🌟 Supabaseの設定
+            const SUPABASE_URL = 'https://lozwsuhkcbuzbdynnyml.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvendzdWhrY2J1emJkeW5ueW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDg1MzgsImV4cCI6MjA5NjEyNDUzOH0.bmk4mz5NyNUqWlImBqWBRISQAzJq3GF6Ply7mG3yNAc';
+            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            let currentRoomId = "";
+            let currentChannel = null;
+            let rankingChannel = null;
+            let trendChart = null;
+
+            // DOM要素
+            const statusEl = document.getElementById("connection-status");
+            const rankingTbody = document.getElementById("ranking-tbody");
+
+            // 🟢 1. ルーム接続処理
+            document.getElementById("connect-btn").addEventListener("click", () => {
+                const roomId = document.getElementById("room-id-input").value.trim();
+                if (!roomId) { alert("ルームIDを入力してください！"); return; }
+
+                currentRoomId = roomId;
+
+                // イベント配信用チャンネル設定
+                if (currentChannel) supabaseClient.removeChannel(currentChannel);
+                currentChannel = supabaseClient.channel(`room-${roomId}`);
+                currentChannel.subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        statusEl.innerHTML = `🟢 接続中: ${roomId}`;
+                        statusEl.style.color = "#10b981";
+                    }
+                });
+
+                // リアルタイムデータ受信用チャンネル設定
+                if (rankingChannel) supabaseClient.removeChannel(rankingChannel);
+                rankingChannel = supabaseClient.channel(`ranking-${roomId}`)
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'yearly_logs', filter: `room_id=eq.${roomId}` }, () => {
+                        fetchDashboardData(); // データが追加されたら画面を更新
+                    }).subscribe();
+
+                // 初回データ取得
+                fetchDashboardData();
+            });
+
+            // 🟢 2. イベント一斉送信処理
+            document.getElementById("broadcast-btn").addEventListener("click", async () => {
+                if (!currentChannel || !currentRoomId) { alert("先に接続してください"); return; }
                 
-                <label for="name-input" style="display:block; font-weight:bold; margin-bottom:5px;">👤 プレイヤー名：</label>
-                <input type="text" id="name-input" placeholder="例：1班_斎藤" maxlength="15" style="width:100%; padding:8px;">
-            </div>
-
-            <div class="difficulty-group">
-                <label style="font-size: 14px; font-weight: bold; color: #34495e; display: block; margin-bottom: 8px;">難易度を選択：</label>
-                <div class="difficulty-buttons">
-                    <button id="start-beginner-btn" style="background-color: #2ecc71;">🌱 初心者</button>
-                    <button id="start-advanced-btn" style="background-color: #e74c3c;">🔥 上級者</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 土地公開スクリーン（新規追加） ===== -->
-<div id="land-reveal-screen" class="hidden">
-    <div class="land-reveal-bg" id="land-reveal-bg"></div>
-    <div class="land-reveal-overlay"></div>
-    <div class="land-reveal-content">
-        <p class="land-reveal-header-text">🎲 あなたの農地が決まりました！</p>
-        <div class="land-reveal-card" id="land-reveal-card">
-            <div class="land-reveal-img-wrap">
-                <img id="land-reveal-img" src="" alt="農地画像">
-            </div>
-            <div class="land-reveal-info">
-                <h2 id="land-reveal-name">---</h2>
-                <p id="land-reveal-desc">---</p>
-                <div class="land-reveal-stats">
-                    <div class="land-stat-item">
-                        <span class="land-stat-label">💰 年間賃料</span>
-                        <span id="land-reveal-cost" class="land-stat-value">---</span>
-                    </div>
-                    <div class="land-stat-item">
-                        <span class="land-stat-label">⚡ 土地パワー推移</span>
-                        <span id="land-reveal-power" class="land-stat-value">---</span>
-                    </div>
-                    <div class="land-stat-item">
-                        <span class="land-stat-label">👤 必要人数推移</span>
-                        <span id="land-reveal-workers" class="land-stat-value">---</span>
-                    </div>
-                    <div class="land-stat-item">
-                        <span class="land-stat-label">🗺️ 土地枚数</span>
-                        <span id="land-reveal-cards" class="land-stat-value">---</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <button id="land-reveal-proceed-btn">この農地で戦略設定へ進む ➔</button>
-    </div>
-</div>
-
-    <div id="setup-screen" class="hidden">
-        <div id="setup-content-wide" style="display: flex; flex-direction: row; gap: 25px; align-items: flex-start; width: 100%; flex-wrap: nowrap; margin-top: 20px;">
-            
-            <div class="setup-left-sidebar" style="width: 320px; min-width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px;">
-                <h2 style="margin-top: 0;">🚜 第 <span id="setup-year-display">1</span> 年目<br>経営戦略設定</h2>
+                const globalSelect = document.getElementById("global-select");
+                const localSelect = document.getElementById("local-select");
                 
-                <div style="background: #e2f0d9; padding: 15px; border-radius: 8px; border: 2px solid #70ad47;">
-                    <h3 id="setup-land-name" style="margin: 0 0 5px 0; color: #385723; font-size: 18px;">-</h3>
-                    <p id="setup-land-desc" style="font-size: 12px; color: #595959; margin: 0; line-height: 1.4;">-</p>
-                </div>
+                let globalId = globalSelect.value;
+                let globalName = globalSelect.options[globalSelect.selectedIndex].text;
+                if (globalId === "random") {
+                    const options = Array.from(globalSelect.options).slice(1);
+                    const randOpt = options[Math.floor(Math.random() * options.length)];
+                    globalId = randOpt.value; globalName = randOpt.text + " (抽選)";
+                }
 
-                <div class="financial-summary-banner" style="background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #475569;">📊 通期財務サマリー</h4>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-                            <span style="font-size:10px; color:#64748b; display:block;">現在残高（投資見込）</span>
-                            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">100,000,000 円</span>
-                        </div>
-                        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-                            <span style="font-size:10px; color:#64748b; display:block;">累計費用</span>
-                            <span id="sum-cum-expense" style="font-size:14px; font-weight:bold; color:#dc2626; display:block; text-align:right;">0 円</span>
-                        </div>
-                        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
-                            <span style="font-size:10px; color:#64748b; display:block;">累計収益</span>
-                            <span id="sum-cum-revenue" style="font-size:14px; font-weight:bold; color:#16a34a; display:block; text-align:right;">0 円</span>
-                        </div>
-                        <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0; border-left: 4px solid #64748b;">
-                            <span style="font-size:10px; color:#64748b; display:block;">初期資本金比 (通期損益)</span>
-                            <span id="sum-net-change" style="font-size:14px; font-weight:bold; color:#64748b; display:block; text-align:right;">±0 円 (維持)</span>
-                        </div>
-                        
-                        <div style="background:#fff; padding: 10px; border-radius:4px; border:1px solid #e2e8f0; margin-top: 5px; height: 180px; position: relative;">
-                            <canvas id="financial-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
+                if (!confirm(`【イベント送信確認】\n全体環境: ${globalName}\n局地環境: ${localSelect.options[localSelect.selectedIndex].text}\n\nこのイベントを全班に送信しますか？`)) return;
 
-                <div id="status-bar" class="hidden">
-                    🔑 ID: <span id="display-room-id">-</span> | 
-                    🌱 難易度: <span id="display-difficulty">-</span>
-                </div>
+                await currentChannel.send({
+                    type: 'broadcast',
+                    event: 'yearly_events',
+                    payload: { global_id: globalId, local_id: localSelect.value }
+                });
+                alert("✅ 全班にイベントを送信しました！");
+            });
 
-                <button id="log-toggle-btn" onclick="openLogModal()">📊 経営履歴（PDCA）</button>
-            </div>
+            // 🟢 3. ランキング＆グラフ データ取得処理
+            async function fetchDashboardData() {
+                if (!currentRoomId) return;
 
-            <div class="setup-main-content" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
-                <p style="margin:0; font-weight: bold; color: #d94111; background: #fff2cc; padding: 8px 12px; border-radius: 5px; font-size: 12px;">
-                    ⚠️ 【ルール】各土地にスタッフを配置し、導入する資材（施設含む）を選んでください。※資材・施設は1面につき最大3つまで選択可能です。
-                </p>
+                const { data, error } = await supabaseClient
+                    .from('yearly_logs')
+                    .select('player_name, year, current_money')
+                    .eq('room_id', currentRoomId)
+                    .order('year', { ascending: true });
 
-                <div id="land-cards-container"></div>
+                if (error || !data) return;
 
-                <button id="begin-business-btn">🎯 この戦略で今年の経営を開始する</button>
-            </div>
+                // ランキング用に最新年度データを抽出
+                const latestDataMap = {};
+                const chartDataMap = {}; // グラフ用 { player_name: { year: money } }
+                let maxYear = 0;
 
-        </div>
-    </div>
+                data.forEach(log => {
+                    const pName = log.player_name;
+                    const money = Number(log.current_money) || 0;
+                    
+                    // ランキング用
+                    if (!latestDataMap[pName] || latestDataMap[pName].year < log.year) {
+                        latestDataMap[pName] = { player_name: pName, year: log.year, current_money: money };
+                    }
+                    
+                    // グラフ用
+                    if (!chartDataMap[pName]) chartDataMap[pName] = { 0: 100000000 }; // 初期資金1億円
+                    chartDataMap[pName][log.year] = money;
+                    if (log.year > maxYear) maxYear = log.year;
+                });
 
-    <div id="game-container" class="hidden">
-        <h2>経営メイン画面（第 <span id="current-year">1</span> 年目）</h2>
-
-        <div class="status-panel" style="background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: left;">
-            <p>👤 経営者: <span id="display-player-name" style="font-weight: bold;">-</span> さん</p>
-            <p>🗺️ 選択された農地: <span id="land-name" style="font-weight: bold; color: #2e75b6;">-</span></p>
-            <p>💰 現在の総経営資金: <span id="money" style="font-weight: bold; color: #1e40af; font-size: 20px;">-</span> 円</p>
-        </div>
-
-        <div id="financial-dashboard" class="hidden">
-            <h3 id="dashboard-title">📊 第 1 年度 決算ダッシュボード</h3>
-            
-            <div class="event-display-row">
-                <div class="event-card global-event-card">
-                    <span class="event-badge">全体環境</span>
-                    <h4 id="dash-global-event-name">⚖️ 通常気象</h4>
-                </div>
-                <div class="event-card local-event-card">
-                    <span class="event-badge">局地環境</span>
-                    <h4 id="dash-local-event-name">⚖️ 影響なし</h4>
-                </div>
-            </div>
-
-            <div class="financial-statement-box">
-                <h4>📈 本年度の資金経過・損益状況</h4>
-                <div class="statement-grid">
-                    <div class="statement-item">
-                        <span class="stat-label">① 期首（投資前）資金額:</span>
-                        <span id="stmt-start-money" class="stat-value">0 円</span>
-                    </div>
-                    <div class="statement-item expense-color">
-                        <span class="stat-label">② 本年度の投資総額（費用）:</span>
-                        <span id="stmt-total-expense" class="stat-value">- 0 円</span>
-                    </div>
-                    <div class="statement-item revenue-color">
-                        <span class="stat-label">③ 本年度の総売上高（収益）:</span>
-                        <span id="stmt-total-revenue" class="stat-value">＋ 0 円</span>
-                    </div>
-                    <div class="statement-item total-color">
-                        <span class="stat-label">④ 期末（次年度繰越）資金額:</span>
-                        <span id="stmt-end-money" class="stat-value">0 円</span>
-                    </div>
-                </div>
-            </div>
-
-            <h4 style="text-align: left; margin: 20px 0 8px 0; color: #334155; font-size: 14px;">🗺️ 農地別 決算内訳</h4>
-            <div class="table-responsive">
-                <table class="dashboard-table">
-                    <thead>
-                        <tr>
-                            <th>農地</th>
-                            <th>作付 / 出荷先</th>
-                            <th>予定収穫量</th>
-                            <th>イベント後収量</th>
-                            <th>基準価格</th>
-                            <th>イベント後価格</th>
-                            <th>最終売上高</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboard-table-body">
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="reflection-report-box" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; border-left: 5px solid #2e75b6; margin-top: 20px; text-align: left;">
-                <h3 style="margin: 0 0 12px 0; color: #1e3a8a; font-size: 16px;">🔍 本年度の経営振り返り ＆ 要因分析（PDCA）</h3>
+                // 🏆 ランキング描画
+                const rankingArray = Object.values(latestDataMap).sort((a, b) => b.current_money - a.current_money);
+                rankingTbody.innerHTML = "";
                 
-                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #334155;">
-                    <p style="margin: 0;">📊 <strong>期待予実ギャップ :</strong> <span id="reflect-gap" style="font-weight: bold;">-</span></p>
-                    <p style="margin: 0;">🌍 <strong>外部環境の要因分析 :</strong> <span id="reflect-global-reason">-</span></p>
-                    <p style="margin: 0;">📍 <strong>局地・内部の要因分析 :</strong> <span id="reflect-local-reason">-</span></p>
-                </div>
+                if (rankingArray.length === 0) {
+                    rankingTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">データがありません</td></tr>`;
+                } else {
+                    rankingArray.forEach((p, idx) => {
+                        let rankIcon = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`;
+                        let bg = idx === 0 ? "background: #fefce8;" : "";
+                        rankingTbody.innerHTML += `
+                            <tr style="${bg}">
+                                <td class="rank-icon">${rankIcon}</td>
+                                <td style="font-weight:bold;">${p.player_name}</td>
+                                <td style="color:#64748b; font-size:12px;">第${p.year}年</td>
+                                <td style="text-align:right; font-weight:bold; color:#16a34a;">¥${p.current_money.toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                }
 
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1; font-size: 13px;">
-                    <label style="font-weight: bold; color: #1e3a8a;">🎯 次期に向けた経営改善方針 (Action) を設定してください :</label><br>
-                    <select style="width: 100%; padding: 8px; margin-top: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                        <option>【人材投資】スタッフの配置や技術レベル（教育・IT補正）を見直す</option>
-                        <option>【リスク管理】施設・農機などの設備投資を強化し、気象災害リスクをヘッジする</option>
-                        <option>【販売戦略】出荷先の条件（有機必須や数量上限）と作物の相性を再計算する</option>
-                        <option>【経営多角化】全ての土地に同じ作物を植えず、ポートフォリオを分散させる</option>
-                    </select>
-                </div>
-            </div>
+                // 📈 グラフ描画
+                drawChart(chartDataMap, maxYear);
+            }
 
-        </div>
+            // 🟢 4. グラフ描画ロジック
+            function drawChart(chartDataMap, maxYear) {
+                const ctx = document.getElementById('trend-chart');
+                const labels = ["初期"];
+                for (let i = 1; i <= maxYear; i++) labels.push(`第${i}年`);
 
-        <div style="margin-top: 25px;">
-            <button id="end-year-btn" style="padding: 12px 35px; font-size: 18px; font-weight: bold; background-color: #c65911; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                📄 この年度の決算を行う
-            </button>
-            <button id="next-year-phase-btn" class="hidden" style="padding: 12px 35px; font-size: 18px; font-weight: bold; background-color: #2e75b6; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 10px;">
-                次年度の戦略設定へ進む ➔
-            </button>
-        </div>
-    </div>
+                const datasets = [];
+                const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
+                let cIdx = 0;
 
-    <div id="result-screen" class="hidden">
-        <div class="setup-content" style="text-align: center; max-width: 800px; margin: 0 auto; padding: 20px;">
-            <h2>🎉 3年間経営お疲れ様でした！</h2>
-            
-            <div class="status-board" style="margin: 20px auto; max-width: 400px;">
-                <p>最終総資産: <span id="final-money" class="highlight-text">0</span> 円</p>
-            </div>
+                for (const [pName, years] of Object.entries(chartDataMap)) {
+                    const dataPoints = [];
+                    let lastVal = 100000000;
+                    for (let i = 0; i <= maxYear; i++) {
+                        if (years[i] !== undefined) lastVal = years[i];
+                        dataPoints.push(Math.round(lastVal / 10000)); // 万円単位
+                    }
+                    datasets.push({
+                        label: pName,
+                        data: dataPoints,
+                        borderColor: colors[cIdx % colors.length],
+                        backgroundColor: colors[cIdx % colors.length],
+                        tension: 0.1, borderWidth: 2, pointRadius: 4
+                    });
+                    cIdx++;
+                }
 
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 25px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="margin-top: 0; color: #334155; font-size: 16px; text-align: left;">📈 3年間の財務推移レポート（費用・収益・資産残高）</h3>
-                <div style="position: relative; height: 280px; width: 100%;">
-                    <canvas id="final-financial-chart"></canvas>
-                </div>
-            </div>
+                if (trendChart) trendChart.destroy();
+                trendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right' } },
+                        scales: { y: { title: { display: true, text: '総資金残高 (万円)' } } }
+                    }
+                });
+            }
 
-            <div class="info-box" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-                <h3>👑 経営評価ランク</h3>
-                <p id="result-rank" style="font-size: 24px; font-weight: bold; color: #d94111; margin: 10px 0;">---</p>
-                <p id="result-comment">評価コメント</p>
-            </div>
+            // 🟢 5. CSVダウンロード処理
+            document.getElementById("download-csv-btn").addEventListener("click", async () => {
+                if (!currentRoomId) { alert("接続してください"); return; }
+                const { data, error } = await supabaseClient.from('yearly_logs').select('*').eq('room_id', currentRoomId).order('player_name').order('year');
+                if (error || !data || data.length === 0) { alert("データがありません"); return; }
 
-            <button id="log-toggle-btn-result" onclick="openLogModal()" style="margin-bottom: 15px;">📊 経営履歴（PDCA）を見る</button>
-            <br>
-            <button onclick="window.location.reload();" style="background: #28a745; color: white; padding: 12px 35px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                タイトルに戻って再挑戦
-            </button>
-        </div>
-    </div>
+                let csv = "班名,年度,導入資材,雇用人数,全体環境,局地環境,売上高(円),費用(円),純利益(円),農地別詳細データ,要因分析\n";
+                data.forEach(log => {
+                    csv += `"${log.player_name}",${log.year},"${log.investments}",${log.staff_count},"${log.global_event}","${log.local_event}",${log.sales},${log.expense},${log.net_profit},"${log.land_details || ''}","${log.feedback}"\n`;
+                });
 
-    <div id="log-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 style="margin: 0; color: #1e40af; font-size: 20px;">📈 経営判断・PDCA振り返りログ</h2>
-                <button class="close-btn" onclick="closeLogModal()">✕ 閉じる</button>
-            </div>
-            <div id="log-container" class="modal-body">
-                <p id="empty-log-msg" style="text-align: center; color: #64748b; margin-top: 40px;">まだ決算データがありません。1年目が終了するとここにログが蓄積されます。</p>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="assets.js"></script>
-    <script src="crops.js"></script>
-    <script src="lands.js"></script>
-    <script src="employees.js"></script>
-    <script src="markets.js"></script>
-    <script src="events.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config_beginner.js"></script>
-    <script src="config_advanced.js"></script>
-    
-    <script src="game.js?v=22"></script> 
-
+                const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `農トレ_集計_${currentRoomId}.csv`;
+                link.click();
+            });
+        });
+    </script>
 </body>
 </html>

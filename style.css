@@ -27,57 +27,130 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
-    background-image: url('Title.png'); 
+    background-image: url('Title.png'); /* ※拡張子がpngの場合は直してください */
     background-size: cover;
     background-position: center;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: center; /* 一旦画面の中央を基準にする */
     align-items: center;
+    overflow: hidden;
 }
 
 .overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
+    /* 🌟 背景の絵と文字が綺麗に見えるよう、暗さを少し控えめに調整 */
+    background: rgba(51, 46, 46, 0.25);
     z-index: 1;
+    pointer-events: none;
 }
 
-.title-content {
+/* 🌟 手前の白い入力パネル（横長バージョン） */
+.start-card {
     position: relative;
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 40px;
+    z-index: 10;
+    background: #ffffff;
+    width: 95%;
+    max-width: 700px; /* 🌟 横幅を広く取る */
+    margin-top: 50vh; /* 🌟 画面中央から下へずらし、文字のすぐ下に配置する */
+    padding: 30px 40px;
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    width: 90%;
-    max-width: 420px;
-    text-align: center;
-    border-top: 8px solid #2ecc71;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
-.main-title { font-size: 32px; color: #2c3e50; margin: 0 0 5px 0; }
-.sub-title { font-size: 18px; color: #2ecc71; display: block; }
-.game-desc { font-size: 12px; color: #033268; margin-bottom: 30px; }
+/* 🌟 入力欄のデザイン（縦並び ➔ 横並びに変更） */
+.input-section {
+    display: flex;
+    flex-direction: row; 
+    gap: 20px;
+}
 
-/* 共通入力グループ（タイトル画面用） */
 .input-group {
+    flex: 1; /* IDと名前の入力欄を左右均等の幅にする */
     text-align: left;
-    margin-top: 20px;
-    margin-bottom: 20px;
 }
+
 .input-group label {
-    font-size: 14px;
+    display: block;
     font-weight: bold;
-    color: #34495e;
+    color: #475569;
+    margin-bottom: 8px;
+    font-size: 14px;
 }
+
+.input-group input,
 input[type="text"] {
     width: 100%;
-    padding: 12px;
-    margin-top: 6px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 14px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #1e293b;
+    box-sizing: border-box;
+    transition: 0.2s;
 }
+
+.input-group input:focus {
+    outline: none;
+    background: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* 🌟 難易度選択エリアのデザイン（これも横並びに変更） */
+.difficulty-section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 20px;
+    display: flex;
+    align-items: center; /* ラベルとボタンの縦位置を揃える */
+    gap: 20px;
+}
+
+.section-label {
+    font-weight: bold;
+    color: #475569;
+    margin: 0; /* 縦の余白をなくす */
+    font-size: 14px;
+    white-space: nowrap; /* 「難易度を選択：」が改行されないようにする */
+}
+
+.button-group {
+    display: flex;
+    flex: 1; /* 残りのスペースをボタンで埋める */
+    gap: 15px;
+}
+
+/* ボタン共通デザイン */
+.btn-diff {
+    flex: 1;
+    padding: 14px 0;
+    font-size: 15px;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-diff:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* 初心者ボタン（緑） */
+.btn-beginner { background-color: #10b981; }
+.btn-beginner:hover { background-color: #059669; }
+
+/* 上級者ボタン（赤） */
+.btn-advanced { background-color: #ef4444; }
+.btn-advanced:hover { background-color: #dc2626; }
 
 /* --- 3. 【画面2】戦略設定画面（2列ワイドダッシュボード構造） --- */
 #setup-screen {
@@ -274,17 +347,16 @@ input[type="text"] {
 
 /* 💰 各農地のリアルタイム投資小計カウンター */
 .land-cost-counter {
-    background: #fff7ed !important;
-    border: 1px dashed #fed7aa !important;
-    padding: 8px 12px !important;
+    display: flex !important; /* 🌟 要素を横並びにする魔法の呪文 */
+    justify-content: space-between !important; /* 🌟 左・中央・右に均等に散らす */
+    align-items: center !important; /* 🌟 縦の高さも中央で揃える */
+    background: #f0fdf4 !important;
+    border: 1px solid #bbf7d0 !important;
+    padding: 10px 15px !important;
     border-radius: 6px !important;
-    font-size: 13px !important;
-    color: #c2410c !important;
-    font-weight: bold !important;
-    text-align: right !important;
     width: 100% !important;
     box-sizing: border-box;
-    margin-top: 5px;
+    margin-top: 10px;
 }
 
 /* 経営開始ボタン */
@@ -733,29 +805,93 @@ input[type="text"] {
     color: #475569;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
-/* 🌟 タイトル画面のボタンレイアウト改善 */
-.difficulty-group {
-    margin-top: 20px;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 8px;
-    text-align: left;
+/* =========================================
+   管理者用ダッシュボード 1画面レイアウト
+========================================= */
+body.admin-mode {
+    margin: 0;
+    padding: 0;
+    background-color: #e2e8f0;
+    height: 100vh;
+    overflow: hidden; /* 画面全体のスクロールを禁止 */
 }
-.difficulty-buttons {
+
+.admin-dashboard-container {
     display: flex;
-    gap: 10px;
-    width: 100%;
+    flex-direction: column;
+    height: 100vh;
+    padding: 15px;
+    box-sizing: border-box;
 }
-.difficulty-buttons button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    color: white;
-    transition: transform 0.1s;
+
+/* 🟢 上部ヘッダーバー */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    flex-shrink: 0;
 }
-.difficulty-buttons button:hover {
-    transform: scale(1.02);
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 20px;
+    color: #1e40af;
+}
+
+/* 🟢 メイン画面（左右分割グリッド） */
+.admin-main {
+    display: grid;
+    grid-template-columns: 350px 1fr; /* 左カラムは350px固定、右カラムは残り全部 */
+    gap: 15px;
+    flex-grow: 1; 
+    overflow: hidden; 
+}
+
+/* 🟢 左カラム（操作パネル＋ランキング） */
+.admin-left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow: hidden;
+}
+
+.admin-control-panel, .ranking-board {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ranking-board {
+    flex-grow: 1; /* ランキング枠を画面下まで伸ばす */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.table-scroll-area {
+    flex-grow: 1;
+    overflow-y: auto; /* 人数が多い場合、ランキングの表だけがスクロールする */
+    margin-top: 10px;
+}
+
+/* 🟢 右カラム（グラフ専用エリア） */
+.admin-right-col {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.canvas-container {
+    flex-grow: 1; /* グラフを枠いっぱいに広げる */
+    position: relative;
 }

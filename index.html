@@ -7,25 +7,27 @@
 </head>
 <body>
 
-    <div id="start-screen">
+   <div id="start-screen">
         <div class="overlay"></div>
-        <div class="title-content" style="z-index: 10; width: 90%; max-width: 400px; text-align: center;">
-            <h1 class="main-title" style="font-size: 3rem; margin-bottom: 10px;">農トレ</h1>
-            <p class="game-desc" style="margin-bottom: 20px;">〜 近代農業の経営シミュレーション 〜</p>
-            
-            <div class="input-group" style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <label for="room-id-input" style="display:block; font-weight:bold; margin-bottom:5px;">🔑 ルームID：</label>
-                <input type="text" id="room-id-input" placeholder="例：zemi2026" style="width:100%; padding:8px; margin-bottom:10px;">
+
+        <div class="start-card">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="room-id-input">🔑 ルームID：</label>
+                    <input type="text" id="room-id-input" placeholder="例：zemi2026">
+                </div>
                 
-                <label for="name-input" style="display:block; font-weight:bold; margin-bottom:5px;">👤 プレイヤー名：</label>
-                <input type="text" id="name-input" placeholder="例：1班_斎藤" maxlength="15" style="width:100%; padding:8px;">
+                <div class="input-group">
+                    <label for="name-input">👤 プレイヤー名：</label>
+                    <input type="text" id="name-input" placeholder="例：1班_斎藤">
+                </div>
             </div>
 
-            <div class="difficulty-group">
-                <label style="font-size: 14px; font-weight: bold; color: #34495e; display: block; margin-bottom: 8px;">難易度を選択：</label>
-                <div class="difficulty-buttons">
-                    <button id="start-beginner-btn" style="background-color: #2ecc71;">🌱 初心者</button>
-                    <button id="start-advanced-btn" style="background-color: #e74c3c;">🔥 上級者</button>
+            <div class="difficulty-section">
+                <p class="section-label">難易度を選択：</p>
+                <div class="button-group">
+                    <button id="start-beginner-btn" class="btn-diff btn-beginner">🌱 初心者</button>
+                    <button id="start-advanced-btn" class="btn-diff btn-advanced">🔥 上級者</button>
                 </div>
             </div>
         </div>

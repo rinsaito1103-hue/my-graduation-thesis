@@ -108,6 +108,14 @@ function generateLandStrategyUI() {
     for (let i = 1; i <= cardCount; i++) {
         let saved = gameState.landStrategies[i - 1] || null;
 
+        // 🌟 修正：ループより「上」に農機とハウスの判定を移動しました！
+        const landHist = gameState.landHistory[i - 1] || {};
+        const machineryActive = !!(landHist.machineryExpireYear && gameState.year <= landHist.machineryExpireYear);
+        const greenhouseActive = !!(landHist.greenhouseExpireYear && gameState.year <= landHist.greenhouseExpireYear);
+        // 現在の年で有効、または画面上でチェック済みの場合は true
+        const hasMachinery = machineryActive || (saved && saved.assetIds && saved.assetIds.includes("machinery"));
+        const hasGreenhouse = greenhouseActive || (saved && saved.assetIds && saved.assetIds.includes("greenhouse"));
+
         let workerSelectsHtml = "";
         for (let w = 1; w <= reqWorkers; w++) {
             let savedWorkerId = (saved && saved.employeeIds && saved.employeeIds[w - 1]) ? saved.employeeIds[w - 1] : "";
@@ -118,8 +126,11 @@ function generateLandStrategyUI() {
             const isExperienced = savedWorkerId === 'experienced' ? 'selected' : '';
             const isVeteran = savedWorkerId === 'veteran' ? 'selected' : '';
 
+            // 🌟 追加したロック処理（hasMachineryが上で計算されたのでエラーになりません）
+            const isWorkerLocked = (hasMachinery && w >= 2) ? "disabled" : "";
+
             workerSelectsHtml += `
-                <select class="land-worker-select" data-land-idx="${i}" onchange="calculateLiveCardCost(${i})">
+                <select class="land-worker-select" data-land-idx="${i}" onchange="calculateLiveCardCost(${i})" ${isWorkerLocked}>
                     <option value="" ${isUnselected}>スタッフ${w}: -- 未選択 --</option>
                     <option value="beginner" ${isBeginner}>スタッフ${w}:初心者 (200万)</option>
                     <option value="experienced" ${isExperienced}>スタッフ${w}:経験者 (600万)</option>
@@ -131,20 +142,13 @@ function generateLandStrategyUI() {
         const savedCropId = saved ? saved.cropId : "";
         const savedMarketId = saved ? saved.marketId : "";
 
-        // 🚜高性能農機・🏠ビニールハウスは「有効期限」ベースで自動継続判定する
-        const landHist = gameState.landHistory[i - 1] || {};
-        const machineryActive = !!(landHist.machineryExpireYear && gameState.year <= landHist.machineryExpireYear);
-        const greenhouseActive = !!(landHist.greenhouseExpireYear && gameState.year <= landHist.greenhouseExpireYear);
-
-        const hasMachinery = machineryActive;
-        const hasGreenhouse = greenhouseActive;
+        // 🚜高性能農機・🏠ビニールハウスの表示・ロック制御
         const machineryCheckboxAttr = machineryActive ? "checked disabled" : "";
         const greenhouseCheckboxAttr = greenhouseActive ? "checked disabled" : "";
         const machineryLabelStyle = machineryActive ? "style='color: #64748b; font-weight: bold; background: #f1f5f9; padding: 2px 5px; border-radius:3px; cursor: not-allowed;'" : "";
         const greenhouseLabelStyle = greenhouseActive ? "style='color: #64748b; font-weight: bold; background: #f1f5f9; padding: 2px 5px; border-radius:3px; cursor: not-allowed;'" : "";
         const machineryActiveNote = machineryActive ? ` <span style="color:#16a34a;">✅有効中(第${landHist.machineryExpireYear}年目まで)</span>` : "";
         const greenhouseActiveNote = greenhouseActive ? ` <span style="color:#16a34a;">✅有効中(第${landHist.greenhouseExpireYear}年目まで)</span>` : "";
-
         const hasPesticide = saved && saved.assetIds ? saved.assetIds.includes("pesticide") : false;
         const hasFertilizer = saved && saved.assetIds ? saved.assetIds.includes("fertilizer") : false;
         const hasOrganic = saved && saved.assetIds ? saved.assetIds.includes("organic") : false;
@@ -163,14 +167,14 @@ function generateLandStrategyUI() {
                         <label>🌾 作付する作物:</label>
                         <select class="land-crop-select" onchange="calculateLiveCardCost(${i})">
                             <option value="" ${savedCropId === '' ? 'selected' : ''}>-- 未選択 --</option>
-                            <option value="hakusai" ${savedCropId === 'hakusai' ? 'selected' : ''}>🥬 S:仙台白菜 (8,000円)</option>
-                            <option value="artichoke" ${savedCropId === 'artichoke' ? 'selected' : ''}>🌱 S:アーティチョーク (12,000円)</option>
-                            <option value="tomato" ${savedCropId === 'tomato' ? 'selected' : ''}>🍅 A:トマト (10,000円)</option>
-                            <option value="strawberry" ${savedCropId === 'strawberry' ? 'selected' : ''}>🍓 A:いちご (12,000円)</option>
-                            <option value="japanese_parsley" ${savedCropId === 'japanese_parsley' ? 'selected' : ''}>🌿 A:せり (8,000円)</option>
-                            <option value="corn" ${savedCropId === 'corn' ? 'selected' : ''}>🌽 B:とうもろこし (10,000円)</option>
-                            <option value="daikon" ${savedCropId === 'daikon' ? 'selected' : ''}>🥕 B:大根 (16,000円)</option>
-                            <option value="cabbage" ${savedCropId === 'cabbage' ? 'selected' : ''}>🥬 C:キャベツ (5,000円)</option>
+                            <option value="hakusai" ${savedCropId === 'hakusai' ? 'selected' : ''}>🥬 S:仙台白菜</option>
+                            <option value="artichoke" ${savedCropId === 'artichoke' ? 'selected' : ''}>🌱 S:アーティチョーク</option>
+                            <option value="tomato" ${savedCropId === 'tomato' ? 'selected' : ''}>🍅 A:トマト</option>
+                            <option value="strawberry" ${savedCropId === 'strawberry' ? 'selected' : ''}>🍓 A:いちご</option>
+                            <option value="japanese_parsley" ${savedCropId === 'japanese_parsley' ? 'selected' : ''}>🌿 A:せり</option>
+                            <option value="corn" ${savedCropId === 'corn' ? 'selected' : ''}>🌽 B:とうもろこし</option>
+                            <option value="daikon" ${savedCropId === 'daikon' ? 'selected' : ''}>🥕 B:大根</option>
+                            <option value="cabbage" ${savedCropId === 'cabbage' ? 'selected' : ''}>🥬 C:キャベツ</option>
                         </select>
                         <label style="margin-top: 5px;">🏪 出荷・販売先:</label>
                         <select class="land-market-select" onchange="calculateLiveCardCost(${i})">
@@ -262,6 +266,7 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     const workerSelects = card.querySelectorAll(".land-worker-select");
     
     workerSelects.forEach(sel => {
+        if (sel.disabled) return;
         workerCount++;
         const empData = EMPLOYEE_MASTER.find(e => e.id === sel.value);
         if (empData) {
@@ -396,11 +401,34 @@ window.calculateLiveCardCost = function(cardOrIdx) {
 
     const counterDiv = document.getElementById(`card-cost-counter-${idx}`);
     if (counterDiv) {
-        counterDiv.textContent = `💰 この農地の投資小計: ${(cardTotalInvestment).toLocaleString()} 円`;
-    }
+        // --- 🌟ROIの計算と表示追加 ---
+        let roiText = "---";
+        if (cardTotalInvestment > 0) {
+            let roi = (estimatedProfit / cardTotalInvestment) * 100;
+            roiText = roi.toFixed(1) + "%";
+        } else if (cardTotalInvestment === 0 && estimatedProfit > 0) {
+            roiText = "無限大 (コスト0)";
+        }
 
-    if (typeof updateSetupFinancialBanner === "function") {
-        updateSetupFinancialBanner();
+        const profitColor = estimatedProfit >= 0 ? '#16a34a' : '#dc2626';
+        const profitSign = estimatedProfit >= 0 ? '+' : '';
+
+        // textContent ではなく innerHTML を使って3行表示にする
+        counterDiv.innerHTML = `
+            <div style="text-align: left; line-height: 1.3;">
+                <span style="font-size: 11px; color: #64748b;">投資額</span><br>
+                <span style="font-size: 14px; font-weight: bold; color: #334155;">${cardTotalInvestment.toLocaleString()}円</span>
+            </div>
+            <div style="text-align: center; line-height: 1.3;">
+                <span style="font-size: 11px; color: #1e40af;">見込ROI</span><br>
+                <span style="font-size: 14px; font-weight: bold; color: #1e40af;">${roiText}</span>
+            </div>
+            <div style="text-align: right; line-height: 1.3;">
+                <span style="font-size: 11px; color: #334155;">見込利益</span><br>
+                <span style="color: ${profitColor}; font-size: 16px; font-weight: bold;">${profitSign}${estimatedProfit.toLocaleString()}円</span>
+            </div>
+        `;
+        // --- 🌟ここまで ---
     }
 };
 
@@ -417,6 +445,21 @@ window.handleAssetExclusion = function(element, cardIdx, type) {
         alert("🚨 【資材制限ルール】\n1つの農地に導入できる農業資材・施設は「最大3つまで」です！");
         element.checked = false; 
         return; 
+    }
+    if (type === "machinery") {
+        const workerSelects = card.querySelectorAll(".land-worker-select");
+        const isMachineryChecked = element.checked;
+        
+        workerSelects.forEach((sel, idx) => {
+            if (idx >= 1) { // 2人目以降（インデックス1以降）
+                if (isMachineryChecked) {
+                    sel.disabled = true;
+                    sel.value = ""; // ロック時は未選択に戻す
+                } else {
+                    sel.disabled = false;
+                }
+            }
+        });
     }
 
     if (type === "organic" && oBox.checked) {
@@ -593,7 +636,9 @@ beginBusinessBtn.addEventListener("click", () => {
         const idx = card.getAttribute("data-idx");
         const cropVal = card.querySelector(".land-crop-select")?.value;
         const marketVal = card.querySelector(".land-market-select")?.value;
-        const workerVals = [...card.querySelectorAll(".land-worker-select")].map(sel => sel.value);
+        const workerVals = [...card.querySelectorAll(".land-worker-select")]
+            .filter(sel => !sel.disabled)
+            .map(sel => sel.value);
 
         if (!cropVal) { alert(`⚠️ ${idx}枚目の農地で「作付する作物」が未選択です。選択してください。`); return; }
         if (!marketVal) { alert(`⚠️ ${idx}枚目の農地で「出荷・販売先」が未選択です。選択してください。`); return; }
@@ -668,7 +713,7 @@ beginBusinessBtn.addEventListener("click", () => {
     }
 
     currentYearPlannedProfitSum = 0;
-    cards.forEach(c => {
+    cards.forEach((c,index) => {
         const cropId = c.querySelector(".land-crop-select").value;
         const landCostBase = gameState.currentLand ? gameState.currentLand.cost : 0;
         const crop = CROP_MASTER.find(cr => cr.id === cropId);
@@ -685,6 +730,7 @@ beginBusinessBtn.addEventListener("click", () => {
         const hasIT = c.querySelector(".asset-it")?.checked;
         
         c.querySelectorAll(".land-worker-select").forEach(sel => {
+            if (sel.disabled) return;
             wCount++;
             const empData = EMPLOYEE_MASTER.find(e => e.id === sel.value);
             if (empData) {
@@ -729,6 +775,10 @@ beginBusinessBtn.addEventListener("click", () => {
         
         let totalInv = seedCost + lCost + assetCost + landCostBase;
         currentYearPlannedProfitSum += Math.round(estRev - totalInv);
+        if (gameState.landStrategies[index]) {
+            gameState.landStrategies[index].cardInvestment = totalInv;
+            gameState.landStrategies[index].laborCost = lCost;
+        }
     });
 
     if (gameState.money < totalInvestment) {
@@ -784,6 +834,7 @@ endYearBtn.addEventListener("click", () => {
     dashboardTitle.textContent = `📊 第 ${gameState.year} 年度 決算ダッシュボード`;
 
     let totalYearRevenue = 0;
+    let fuelSurgeCost = 0; // 💸 燃料・資材コスト高騰イベント用の追加コスト
     dashboardTableBody.innerHTML = ""; 
 
     gameState.landStrategies.forEach((strat, index) => {
@@ -962,7 +1013,24 @@ endYearBtn.addEventListener("click", () => {
                 <td style="font-weight:bold; color:#1e40af;">＋${cropRevenue.toLocaleString()} 円</td>
             </tr>
         `;
-    });
+        strat.actualYieldKg = Math.round(actualYieldKg);
+        strat.cropRevenue = cropRevenue;
+    }); 
+
+
+    
+
+    // 💸 燃料・資材コスト高騰イベント：農薬・化学肥料・高性能農機を導入している資材1つにつき50万円の追加コストを徴収
+    if (globalEvent.id === "fuel_surge") {
+        gameState.landStrategies.forEach(strat => {
+            if (!strat.assets) return;
+            const surgeTargetCount = strat.assets.filter(a => ["pesticide", "fertilizer", "machinery"].includes(a.id)).length;
+            fuelSurgeCost += surgeTargetCount * 500000;
+        });
+        currentYearExpenses += fuelSurgeCost;
+        gameState.money -= fuelSurgeCost;
+        gameState.cumExpenses += fuelSurgeCost;
+    }
 
     gameState.money += totalYearRevenue;
     gameState.cumRevenue += totalYearRevenue; 
@@ -1008,6 +1076,8 @@ endYearBtn.addEventListener("click", () => {
             globalReasonEl.textContent = `全国的な【${globalEvent.name}】により、一般的な作物の市場単価が50%に大暴落（豊作貧乏）。出荷量が多くても売上が伸び悩む原因となりました。`;
         } else if (globalEvent.id === "poor_crop") {
             globalReasonEl.textContent = `全国的な【${globalEvent.name}】により、市場価格が2倍に急高騰。自らの農地が被害を免れていた場合、莫大な売上を確保できるチャンス期でした。`;
+        } else if (globalEvent.id === "fuel_surge") {
+            globalReasonEl.textContent = `市場で【${globalEvent.name}】が発生。原油・資源価格の高騰により、高性能農機・農薬・化学肥料を導入している農地ごとに、1資材あたり50万円の追加維持コストが強制徴収され、費用が大幅に圧迫されました。（今回の追加負担額：${fuelSurgeCost.toLocaleString()}円）`;
         } else {
             globalReasonEl.textContent = `【通常気象】市場価格の突発的な変動はありません。純粋な作物の基礎単価と、事前の販売先選定戦略がそのまま利益を決定しました。`;
         }
@@ -1032,13 +1102,37 @@ endYearBtn.addEventListener("click", () => {
     // 🌟ここから追加：今年のPDCAデータを抽出し保存する
     let allAssets = [];
     let staffCount = 0;
-    gameState.landStrategies.forEach(s => {
+    let landDetails = []; // 🌟 新設：土地ごとの詳細データを保存
+
+    gameState.landStrategies.forEach((s, idx) => {
+        let assetNames = s.assets ? s.assets.map(a => a.name) : [];
+        let empCount = s.employees ? s.employees.length : 0;
+        let cropName = s.crop ? s.crop.name : "未選択";
+        let marketName = s.market ? s.market.name : "未選択";
+
+        landDetails.push({
+            landIndex: idx + 1,
+            crop: cropName,
+            market: marketName,
+            assets: assetNames,
+            staffCount: empCount,
+            investment: s.cardInvestment || 0,
+            laborCost: s.laborCost || 0,
+            yieldKg: s.actualYieldKg || 0,
+            revenue: s.cropRevenue || 0
+        });
+
+        // Supabase互換用（全体集計）
         if(s.assets) s.assets.forEach(a => { if(!allAssets.includes(a.name)) allAssets.push(a.name); });
         if(s.employees) staffCount += s.employees.length;
     });
+    let landDetailsText = landDetails.map(l => 
+        `[${l.landIndex}枚目] 作物:${l.crop}(${l.market}) | 人員:${l.staffCount}名 | 資材:${l.assets.length>0 ? l.assets.join('/') : '無'} | 投資:¥${l.investment} | 収穫:${l.yieldKg}kg | 売上:¥${l.revenue}`
+    ).join(" ｜ ");
 
     businessLogs.push({
         year: gameState.year,
+        landDetails: landDetails, // 🌟 土地ごとのデータをログに追加
         investments: allAssets,
         staffCount: staffCount,
         globalEvent: globalEvent.name,
@@ -1046,7 +1140,6 @@ endYearBtn.addEventListener("click", () => {
         sales: totalYearRevenue,
         expense: currentYearExpenses,
         netProfit: actualYearProfit,
-        // 要因分析のテキストを取得
         feedback: (gapEl ? gapEl.textContent : "") + "\n" + 
                   (globalReasonEl ? globalReasonEl.textContent : "") + "\n" + 
                   (localReasonEl ? localReasonEl.textContent : "")
@@ -1056,6 +1149,7 @@ endYearBtn.addEventListener("click", () => {
         room_id: gameState.roomId,
         player_name: gameState.playerName,
         year: gameState.year,
+        current_money: gameState.money,
         investments: allAssets.length > 0 ? allAssets.join('・') : 'なし',
         staff_count: staffCount,
         global_event: globalEvent.name,
@@ -1063,6 +1157,7 @@ endYearBtn.addEventListener("click", () => {
         sales: totalYearRevenue,
         expense: currentYearExpenses,
         net_profit: actualYearProfit,
+        land_details: landDetailsText,
         feedback: (gapEl ? gapEl.textContent : "") + " | " + 
                   (globalReasonEl ? globalReasonEl.textContent : "") + " | " + 
                   (localReasonEl ? localReasonEl.textContent : "")
@@ -1115,7 +1210,9 @@ function saveCurrentStrategies() {
 
         const workerSelects = card.querySelectorAll(".land-worker-select");
         let workerIds = [];
-        workerSelects.forEach(sel => workerIds.push(sel.value));
+        workerSelects.forEach(sel => {
+            if (!sel.disabled) workerIds.push(sel.value); 
+        });
         gameState.landStrategies[idx].employeeIds = workerIds;
 
         let assetIds = [];
@@ -1131,13 +1228,13 @@ function saveCurrentStrategies() {
 }
 
 function showFinalResult() {
-    if (gameState.money >= 25000000) {
+    if (gameState.money >= 200000000) {
         resultRankElement.textContent = "🏆 ランクＳ：伝説のメガ農家";
         resultCommentElement.textContent = `素晴らしい！すべての農地に最適な人材と資材を個別配分し、リスクを完璧にヘッジしました。素晴らしい采配です！`;
-    } else if (gameState.money >= 20000000) {
+    } else if (gameState.money >= 150000000) {
         resultRankElement.textContent = "🏅 ランクＡ：敏腕グリーン経営者";
         resultCommentElement.textContent = `黒字を安定して確保し、近代的な営農スタイルを確立できています。さらに高みを目指しましょう！`;
-    } else if (gameState.money >= 10000000) {
+    } else if (gameState.money >= 100000000) {
         resultRankElement.textContent = "🚜 ランクＢ：中堅ベテラン農家";
         resultCommentElement.textContent = `手堅い経営ですが、イベントの波に少し飲まれてしまったかもしれません。機材や人材への投資バランスを見直してみましょう。`;
     } else {
@@ -1354,36 +1451,63 @@ function renderLogs() {
         const log = businessLogs[i];
         const profitColor = log.netProfit >= 0 ? '#16a34a' : '#dc2626';
         
+        // 🌟 追加：農地ごとの詳細HTML（ミニカード）を生成
+        let landDetailsHtml = "";
+        if (log.landDetails) {
+            log.landDetails.forEach(land => {
+                let assetStr = land.assets.length > 0 ? land.assets.join(' / ') : 'なし';
+                landDetailsHtml += `
+                    <div style="flex: 1; min-width: 190px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="font-weight: bold; color: #1e40af; font-size: 13px; margin-bottom: 6px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">🗺️ ${land.landIndex}枚目：${land.crop}</div>
+                        <div style="font-size: 11px; color: #475569; line-height: 1.6;">
+                            <span style="color:#94a3b8;">🏪 出荷先:</span> ${land.market}<br>
+                            <span style="color:#94a3b8;">👤 従業員:</span> ${land.staffCount}名 (人件費: ¥${land.laborCost.toLocaleString()})<br>
+                            <span style="color:#94a3b8;">🛠️ 資材:</span> ${assetStr}<br>
+                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 12px;">
+                                <span style="color:#64748b;">📉 投資小計:</span> ¥${land.investment.toLocaleString()}<br>
+                                <span style="color:#64748b;">📦 収穫量:</span> <span style="font-weight:bold; color:#334155;">${land.yieldKg.toLocaleString()} kg</span><br>
+                                <span style="color:#64748b;">📈 売上高:</span> <span style="font-weight:bold; color:#16a34a;">¥${land.revenue.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
         const card = document.createElement('div');
         card.className = 'log-card';
         card.innerHTML = `
             <h3 style="margin-top:0; color:#1e40af; border-bottom:2px solid #cbd5e1; padding-bottom:5px;">📅 第 ${log.year} 年目の経営実績</h3>
-            <div class="pdca-grid">
-                <div class="pdca-block">
-                    <strong>📝 投資・人員配置</strong>
-                    <ul>
-                        <li>導入した資材: ${log.investments.length > 0 ? log.investments.join(', ') : 'なし'}</li>
-                        <li>雇用した従業員: 計 ${log.staffCount} 名</li>
-                    </ul>
+            
+            <div class="pdca-grid" style="display: flex; flex-direction: column; gap: 12px;">
+                
+                <div class="pdca-block" style="width: 100%;">
+                    <strong>📝 農地ごとの戦略・配置</strong>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                        ${landDetailsHtml}
+                    </div>
                 </div>
-                <div class="pdca-block">
-                    <strong>🚜環境・発生イベント</strong>
-                    <ul>
+
+                <div class="pdca-block" style="width: 100%;">
+                    <strong>🚜 環境・発生イベント</strong>
+                    <ul style="margin-top: 5px; margin-bottom: 0;">
                         <li>全体環境: ${log.globalEvent}</li>
                         <li>局地環境: ${log.localEvent}</li>
                     </ul>
                 </div>
-                <div class="pdca-block" style="grid-column: span 2;">
+
+                <div class="pdca-block" style="width: 100%;">
                     <strong>📊 財務結果</strong>
-                    <table style="width:100%; font-size:14px; text-align:left; border-collapse: collapse;">
+                    <table style="width:100%; font-size:14px; text-align:left; border-collapse: collapse; margin-top: 5px;">
                         <tr>
-                            <td style="padding: 4px;">売上高: ¥${log.sales.toLocaleString()}</td>
-                            <td style="padding: 4px;">本年度費用: ¥${log.expense.toLocaleString()}</td>
-                            <td style="padding: 4px; font-size: 16px;"><strong>純利益: <span style="color:${profitColor}">¥${log.netProfit.toLocaleString()}</span></strong></td>
+                            <td style="padding: 4px; border-right: 1px solid #cbd5e1;">売上高: ¥${log.sales.toLocaleString()}</td>
+                            <td style="padding: 4px; border-right: 1px solid #cbd5e1; padding-left: 10px;">本年度費用: ¥${log.expense.toLocaleString()}</td>
+                            <td style="padding: 4px; font-size: 16px; padding-left: 10px;"><strong>純利益: <span style="color:${profitColor}">¥${log.netProfit.toLocaleString()}</span></strong></td>
                         </tr>
                     </table>
                 </div>
-                <div class="pdca-block" style="grid-column: span 2; background: #fdfae6; border-left: 4px solid #f59e0b;">
+
+                <div class="pdca-block" style="width: 100%; background: #fdfae6; border-left: 4px solid #f59e0b;">
                     <strong>💡 システムによる要因分析</strong>
                     <p style="margin:5px 0 0 0; font-size:12px; line-height:1.6; color: #334155; white-space: pre-wrap;">${log.feedback}</p>
                 </div>
