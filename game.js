@@ -14,6 +14,9 @@ let gameState = {
     ]
 };
 
+let currentMoney = 0;
+let initialMoney = 0;
+
 // 🌟【新設】先生からのイベントデータを受信・保持するための変数
 let receivedGlobalEventId = null;
 let receivedLocalEventId = null;
@@ -495,6 +498,7 @@ function updateSetupFinancialBanner() {
     setupYearDisplay.textContent = gameState.year;
     sumCumExpense.textContent = `${gameState.cumExpenses.toLocaleString()} 円`;
     sumCumRevenue.textContent = `${gameState.cumRevenue.toLocaleString()} 円`;
+    sumCurrentMoney.textContent = `${gameState.money.toLocaleString()} 円`; // 🌟 現在の所持資金残高を毎回反映（これまで初期値のまま固定されていたバグを修正）
 
     let totalInvestment = 0; 
     const cards = document.querySelectorAll(".land-strategy-card");
@@ -525,21 +529,29 @@ function updateSetupFinancialBanner() {
         else if (cropId === "japanese_parsley") totalInvestment += 8000;
     });
 
-    const estimatedMoney = gameState.money - totalInvestment;
-    const netChange = estimatedMoney - 100000000;
+    const netChangeEl = document.getElementById("sum-net-change");
     
-    sumCurrentMoney.textContent = `${estimatedMoney.toLocaleString()} 円`;
+    // 現在の資金と初期資金の差額を計算（🌟 gameState.moneyは年度ごとに更新される実際の資金残高を使用）
+    const netChange = gameState.money - initialMoney;
+    
+    // 初期資金に対する増減率（パーセンテージ）を計算
+    const ratio = (netChange / initialMoney) * 100;
 
-    const netChangeElement = document.getElementById("sum-net-change");
-    if (netChangeElement) {
-        if (netChange > 0) {
-            netChangeElement.innerHTML = `<span style="color: #16a34a; font-weight: bold;">＋${netChange.toLocaleString()} 円</span>`;
-        } else if (netChange < 0) {
-            netChangeElement.innerHTML = `<span style="color: #dc2626; font-weight: bold;">－${Math.abs(netChange).toLocaleString()} 円</span>`;
-        } else {
-            netChangeElement.innerHTML = `<span style="color: #64748b; font-weight: bold;">±0 円 (維持)</span>`;
-        }
+    // プラス、マイナス、プラマイゼロで表示と色を切り替える
+    if (netChange > 0) {
+        // 利益が出ている場合（成長）: 緑色
+        netChangeEl.textContent = `+${netChange.toLocaleString()} 円 (+${ratio.toFixed(1)}%)`;
+        netChangeEl.style.color = "#16a34a";
+    } else if (netChange < 0) {
+        // 損失が出ている場合（毀損）: 赤色
+        netChangeEl.textContent = `${netChange.toLocaleString()} 円 (${ratio.toFixed(1)}%)`;
+        netChangeEl.style.color = "#dc2626";
+    } else {
+        // 変動なしの場合（維持）: グレー
+        netChangeEl.textContent = `±0 円 (維持)`;
+        netChangeEl.style.color = "#64748b";
     }
+    // ▲▲ ここまで ▲▲
 }
 
 // --- 4. 画面遷移：タイトル ➔ セットアップ ---
@@ -552,6 +564,8 @@ function startGame(config) {
     gameState.roomId = roomId; // 🌟ルームIDを保存
     gameState.playerName = name;
     gameState.difficulty = config.id;
+    initialMoney = config.startMoney;
+    currentMoney = config.startMoney;
 
     // 🌟ここに追加：入力されたルームID専用の通信アンテナを立てる
     const channel = supabaseClient.channel(`room-${roomId}`);
@@ -690,6 +704,13 @@ beginBusinessBtn.addEventListener("click", () => {
                     landHistForAsset.greenhouseExpireYear = gameState.year + asset.duration - 1;
                 }
                 // 有効期間中（継続効果）は再課金しない
+            } else if (asset.id === "it_system") {
+                // 💻 ITシステムは一度購入すると永続的にロックされる資産のため、継続中（チェックボックスがdisabled）なら再課金しない
+                const itCheckbox = card.querySelector(".asset-it");
+                const isContinuing = itCheckbox && itCheckbox.disabled;
+                if (!isContinuing) {
+                    totalInvestment += asset.cost; // 新規購入時のみ課金
+                }
             } else {
                 totalInvestment += asset.cost;
             }
@@ -766,9 +787,12 @@ beginBusinessBtn.addEventListener("click", () => {
         else if (cropId === "japanese_parsley") seedCost = 8000;
         
         let assetCost = 0;
-        if (c.querySelector(".asset-machinery")?.checked) assetCost += getAssetCost("machinery");
-        if (c.querySelector(".asset-house")?.checked) assetCost += getAssetCost("greenhouse");
-        if (c.querySelector(".asset-it")?.checked) assetCost += getAssetCost("it_system");
+        const machineryCb = c.querySelector(".asset-machinery");
+        if (machineryCb?.checked && !machineryCb.disabled) assetCost += getAssetCost("machinery");
+        const greenhouseCb = c.querySelector(".asset-house");
+        if (greenhouseCb?.checked && !greenhouseCb.disabled) assetCost += getAssetCost("greenhouse");
+        const itCb = c.querySelector(".asset-it");
+        if (itCb?.checked && !itCb.disabled) assetCost += getAssetCost("it_system");
         if (c.querySelector(".asset-pesticide")?.checked) assetCost += getAssetCost("pesticide");
         if (c.querySelector(".asset-fertilizer")?.checked) assetCost += getAssetCost("fertilizer");
         if (c.querySelector(".asset-organic")?.checked) assetCost += getAssetCost("organic");
@@ -1096,7 +1120,7 @@ endYearBtn.addEventListener("click", () => {
         } else if (localEvent.id === "good_weather") {
             localReasonEl.textContent = `奇跡の【${localEvent.name}】が到来！全ての農地で収穫量が2倍に大ブーストされ、計画を大きく上回る収益をもたらした最大の要因です。`;
         } else {
-            localReasonEl.textContent = `【特記事項なし】栽培トラブルは発生しませんでした。下振れがあるとすれば、従業員の技術レベル（C〜Sランク制限）が足りず、計画収量が最初から削られていた内部的な采配ミスが考えられます。`;
+            localReasonEl.textContent = `【特記事項なし】栽培トラブルは発生しませんでした。`;
         }
     }
     // 🌟ここから追加：今年のPDCAデータを抽出し保存する
