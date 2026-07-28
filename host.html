@@ -224,7 +224,7 @@
 
                 const { data, error } = await supabaseClient
                     .from('yearly_logs')
-                    .select('player_name, year, current_money')
+                    .select('player_name, year, current_money, net_profit')
                     .eq('room_id', currentRoomId)
                     .order('year', { ascending: true });
 
@@ -238,6 +238,7 @@
                 data.forEach(log => {
                     const pName = log.player_name;
                     const money = Number(log.current_money) || 0;
+                    const netProfit = Number(log.net_profit) || 0;
                     
                     // ランキング用
                     if (!latestDataMap[pName] || latestDataMap[pName].year < log.year) {
@@ -245,8 +246,15 @@
                     }
                     
                     // グラフ用
-                    if (!chartDataMap[pName]) chartDataMap[pName] = { 0: 100000000 }; // 初期資金1億円
+                    if (!chartDataMap[pName]) chartDataMap[pName] = {};
                     chartDataMap[pName][log.year] = money;
+
+                    // 🌟 初期資金は難易度（初心者/上級者）によって異なるため固定値にせず、
+                    // 第1年目の「所持金 − 純利益」から実際のスタート資金を逆算してリンクさせる
+                    if (log.year === 1) {
+                        chartDataMap[pName][0] = money - netProfit;
+                    }
+
                     if (log.year > maxYear) maxYear = log.year;
                 });
 
@@ -287,17 +295,18 @@
 
                 for (const [pName, years] of Object.entries(chartDataMap)) {
                     const dataPoints = [];
-                    let lastVal = 100000000;
+                    let lastVal = null; // 🌟 実データが出るまでは何も仮定しない（固定値の1億円を廃止）
                     for (let i = 0; i <= maxYear; i++) {
                         if (years[i] !== undefined) lastVal = years[i];
-                        dataPoints.push(Math.round(lastVal / 10000)); // 万円単位
+                        dataPoints.push(lastVal === null ? null : Math.round(lastVal / 10000));
                     }
                     datasets.push({
                         label: pName,
                         data: dataPoints,
                         borderColor: colors[cIdx % colors.length],
                         backgroundColor: colors[cIdx % colors.length],
-                        tension: 0.1, borderWidth: 2, pointRadius: 4
+                        tension: 0.1, borderWidth: 2, pointRadius: 4,
+                        spanGaps: true
                     });
                     cIdx++;
                 }
@@ -308,8 +317,22 @@
                     data: { labels, datasets },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right' } },
-                        scales: { y: { title: { display: true, text: '総資金残高 (万円)' } } }
+                        plugins: {
+                            legend: { position: 'right' },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${(ctx.parsed.y * 10000).toLocaleString()}円`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: '総資金残高（万円）' },
+                                ticks: {
+                                    callback: (val) => `${Number(val).toLocaleString()}`
+                                }
+                            }
+                        }
                     }
                 });
             }
