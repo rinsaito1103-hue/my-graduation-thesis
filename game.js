@@ -187,7 +187,6 @@ function generateLandStrategyUI() {
                             <option value="restaurant" ${savedMarketId === 'restaurant' ? 'selected' : ''}>レストラン [上限200kg]</option>
                             <option value="natural_store" ${savedMarketId === 'natural_store' ? 'selected' : ''}>自然派ストア [有機必須]</option>
                             <option value="processed_food" ${savedMarketId === 'processed_food' ? 'selected' : ''}>加工工場 [大根・ｺｰﾝ・せり]</option>
-                            <option value="sixth_industry" ${savedMarketId === 'sixth_industry' ? 'selected' : ''}>六次産業化 [リスク有]</option>
                         </select>
                     </div>
                     <div class="land-strategy-card-right">
@@ -929,7 +928,13 @@ endYearBtn.addEventListener("click", () => {
             else if (["cabbage", "tomato", "hakusai", "daikon", "japanese_parsley"].includes(crop.id)) yieldRate *= 0.5;
         }
         else if (localEvent.id === "animal_damage") {
-            if (hasGreenhouse) { strat.assets = assets.filter(a => a.id !== "greenhouse"); }
+            if (hasGreenhouse) {
+                strat.assets = assets.filter(a => a.id !== "greenhouse");
+                // 🏠 獣害で破壊されても、翌年には無償で自動修復され効果が復活する
+                const hhHist = gameState.landHistory[index] || { lastFamily: null, consecutiveCounter: 0, machineryExpireYear: null, greenhouseExpireYear: null };
+                hhHist.greenhouseExpireYear = Math.max(hhHist.greenhouseExpireYear || 0, gameState.year + 1);
+                gameState.landHistory[index] = hhHist;
+            }
             yieldRate *= 0;
         }
         else if (localEvent.id === "good_weather") {
@@ -1116,7 +1121,7 @@ endYearBtn.addEventListener("click", () => {
 
             localReasonEl.textContent = `地域に【${localEvent.name}】が発生し、作物の収穫量が大きく低下しました。${isShielded ? 'しかし、事前に導入していた防衛資材（施設や農薬など）が一部の農地で作物をガードしました。' : '資材・施設による防御が不足していた農地では、大きな機会損失（下振れ要因）となっています。'}`;
         } else if (localEvent.id === "animal_damage") {
-            localReasonEl.textContent = `最悪の災害【${localEvent.name}】が発生。ハウス施設などの有無に関わらず、すべての作物が食い荒らされ収穫量が強制的に0kgとなりました。`;
+            localReasonEl.textContent = `最悪の災害【${localEvent.name}】が発生。ハウス施設などの有無に関わらず、すべての作物が食い荒らされ収穫量が強制的に0kgとなりましたビニールハウスは破壊されますが、翌年には自動で修復されます。`;
         } else if (localEvent.id === "good_weather") {
             localReasonEl.textContent = `奇跡の【${localEvent.name}】が到来！全ての農地で収穫量が2倍に大ブーストされ、計画を大きく上回る収益をもたらした最大の要因です。`;
         } else {
@@ -1187,7 +1192,7 @@ endYearBtn.addEventListener("click", () => {
                   (localReasonEl ? localReasonEl.textContent : "")
     };
 
-    supabaseClient.from('yearly_logs').insert([logDataToDB])
+    supabaseClient.from('yearly_logs').upsert([logDataToDB], { onConflict: 'room_id,player_name,year' })
         .then(res => console.log("☁️ ログをサーバーへ自動送信しました"))
         .catch(err => console.error("送信エラー:", err));
 
@@ -1275,13 +1280,13 @@ function showFinalResult() {
         renderFinalSummaryChart();
     }, 50);
 
-    supabaseClient.from('scores').insert([
-        { 
+    supabaseClient.from('scores').upsert([
+        {
             room_id: gameState.roomId,
-            player_name: gameState.playerName, 
-            final_money: gameState.money 
+            player_name: gameState.playerName,
+            final_money: gameState.money
         }
-    ]).then(response => {
+    ], { onConflict: 'room_id,player_name' }).then(response => {
         console.log("🏆 スコアの送信が完了しました！", response);
     }).catch(error => {
         console.error("スコア送信エラー:", error);
