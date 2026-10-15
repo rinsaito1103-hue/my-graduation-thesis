@@ -45,14 +45,5 @@ const MARKET_MASTER = [
             hakusai: null, artichoke: null, daikon: 30000, japanese_parsley: 5000
         },
         desc: "加工食品を高値で買い取ります。"
-    },
-    {
-        id: "sixth_industry",
-        name: "六次産業化",
-        prices: {
-            cabbage: 25000, corn: null, strawberry: 30000, tomato: 40000,
-            hakusai: null, artichoke: null, daikon: 35000, japanese_parsley: 50000
-        },
-        desc: "2年目からしか使えない。商標登録カードを使われると販売量がゼロになる。"
     }
 ];

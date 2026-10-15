@@ -900,7 +900,6 @@ endYearBtn.addEventListener("click", () => {
         let finalPricePerKg = basePricePerKg;
         if (globalEvent.id === "boom_exotic" && crop.id === "artichoke") finalPricePerKg *= 2;
         if (globalEvent.id === "boom_traditional" && crop.id === "hakusai") finalPricePerKg *= 2;
-        if (globalEvent.id === "rival" && market.id === "sixth_industry") finalPricePerKg *= 0.5;
         if (globalEvent.id === "bumper_crop" && ["cabbage", "corn", "strawberry", "tomato", "daikon"].includes(crop.id)) finalPricePerKg *= 0.5;
         if (globalEvent.id === "poor_crop" && ["cabbage", "corn", "strawberry", "tomato", "hakusai", "artichoke"].includes(crop.id)) finalPricePerKg *= 2;
 

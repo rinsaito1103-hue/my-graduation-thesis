@@ -28,7 +28,7 @@ const LAND_MASTER = [
         name: "通常農地",
         image:"land_normal.png",
         totalCards: 4,     // 土地枚数: 4枚
-        cost: 4000000,     // 💡元のコードと整合性を取るため40万円（画像通りなら400000円）
+        cost: 400000,      // 年間賃料: 40万円
         power: { year1: 2, year2: 2, year3: 2 },
         requiredWorkers: { year1: 2, year2: 2, year3: 2 },
         desc: "年間賃料40万円。パワー2、必要従業員2人で3年間ずっと変化しない、すべての基準となる農地です。"
