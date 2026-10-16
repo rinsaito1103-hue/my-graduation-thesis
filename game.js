@@ -553,15 +553,106 @@ function updateSetupFinancialBanner() {
     // ▲▲ ここまで ▲▲
 }
 
+// --- 3.5 チームメンバー（学籍番号・氏名）の入力欄（1チーム最大5人） ---
+const MAX_TEAM_SIZE = 5;
+const teamSizeSelect = document.getElementById("team-size-select");
+const memberSection = document.getElementById("member-section");
+const memberFields = document.getElementById("member-fields");
+
+// 学籍番号は「半角の数字と大文字の英字」だけにそろえる（全角は半角に、小文字は大文字に変換）
+function sanitizeStudentId(value) {
+    return value.normalize("NFKC").toUpperCase().replace(/[^0-9A-Z]/g, "");
+}
+
+// 選んだ人数分の入力欄を作る（すでに入力済みの内容は残す）
+function renderMemberFields(count) {
+    const old = Array.from(memberFields.querySelectorAll(".member-row")).map(row => ({
+        id: row.querySelector(".member-id-input").value,
+        name: row.querySelector(".member-name-input").value
+    }));
+    memberFields.innerHTML = "";
+    for (let i = 0; i < count; i++) {
+        const row = document.createElement("div");
+        row.className = "member-row";
+        row.innerHTML = `
+            <span class="member-no">${i + 1}人目</span>
+            <input type="text" class="member-id-input" maxlength="12" inputmode="latin" autocomplete="off" placeholder="学籍番号" aria-label="${i + 1}人目の学籍番号">
+            <input type="text" class="member-name-input" maxlength="30" autocomplete="off" placeholder="氏名" aria-label="${i + 1}人目の氏名">
+        `;
+        const idInput = row.querySelector(".member-id-input");
+        const nameField = row.querySelector(".member-name-input");
+        idInput.value = old[i] ? old[i].id : "";
+        nameField.value = old[i] ? old[i].name : "";
+        idInput.addEventListener("input", () => {
+            // 日本語入力の変換中は触らない（確定後に整える）
+            if (idInput.dataset.composing === "1") return;
+            idInput.value = sanitizeStudentId(idInput.value);
+        });
+        idInput.addEventListener("compositionstart", () => { idInput.dataset.composing = "1"; });
+        idInput.addEventListener("compositionend", () => {
+            idInput.dataset.composing = "0";
+            idInput.value = sanitizeStudentId(idInput.value);
+        });
+        memberFields.appendChild(row);
+    }
+    memberSection.classList.toggle("hidden", count === 0);
+}
+
+teamSizeSelect.addEventListener("change", () => {
+    const n = parseInt(teamSizeSelect.value, 10);
+    renderMemberFields(Number.isInteger(n) ? Math.min(n, MAX_TEAM_SIZE) : 0);
+});
+
+// 入力内容を確認し、問題があればメッセージを、なければメンバー一覧を返す
+function collectTeamMembers() {
+    const size = parseInt(teamSizeSelect.value, 10);
+    if (!Number.isInteger(size) || size < 1 || size > MAX_TEAM_SIZE) {
+        return { error: "チーム人数（1〜5人）を選択してください！" };
+    }
+    const rows = memberFields.querySelectorAll(".member-row");
+    const members = [];
+    const seen = new Set();
+    for (let i = 0; i < rows.length; i++) {
+        const studentId = sanitizeStudentId(rows[i].querySelector(".member-id-input").value);
+        const studentName = rows[i].querySelector(".member-name-input").value.trim().replace(/\s+/g, " ");
+        if (!studentId) return { error: `${i + 1}人目の学籍番号を入力してください！` };
+        if (!/^[0-9A-Z]+$/.test(studentId)) return { error: `${i + 1}人目の学籍番号は、半角の数字と大文字の英字だけで入力してください！` };
+        if (!studentName) return { error: `${i + 1}人目の氏名を入力してください！` };
+        if (seen.has(studentId)) return { error: `${i + 1}人目の学籍番号が、同じチームの他のメンバーと重複しています！` };
+        seen.add(studentId);
+        members.push({ studentId, studentName });
+    }
+    return { members };
+}
+
+// メンバーをSupabaseに保存する（追加のみ。同じチームの同じ学籍番号がすでにある場合は何もしない）
+function saveTeamMembers(roomId, teamName, members) {
+    members.forEach(m => {
+        supabaseClient.from('team_members').insert([{
+            room_id: roomId,
+            team_name: teamName,
+            student_id: m.studentId,
+            student_name: m.studentName
+        }]).then(res => {
+            // 23505 = すでに登録済み（再開・再入力など）なので問題なし
+            if (res.error && res.error.code !== '23505') console.error("メンバー保存エラー:", res.error);
+        }).catch(err => console.error("メンバー保存エラー:", err));
+    });
+}
+
 // --- 4. 画面遷移：タイトル ➔ セットアップ ---
 function startGame(config) {
     const roomId = document.getElementById("room-id-input").value.trim();
     const name = nameInput.value.trim();
     if (!roomId) { alert("ルームIDを入力してください！"); return; }
-    if (!name) { alert("名前を入力してください！"); return; }
+    if (!name) { alert("チーム名を入力してください！"); return; }
+    const teamResult = collectTeamMembers();
+    if (teamResult.error) { alert(teamResult.error); return; }
     
     gameState.roomId = roomId; // 🌟ルームIDを保存
-    gameState.playerName = name;
+    gameState.playerName = name; // 🌟「チーム名」として使う（ランキングやデータ保存の識別子）
+    gameState.members = teamResult.members; // 🌟学籍番号と氏名（最大5人）
+    saveTeamMembers(roomId, name, teamResult.members);
     gameState.difficulty = config.id;
     initialMoney = config.startMoney;
     currentMoney = config.startMoney;

@@ -18,9 +18,27 @@
                 </div>
                 
                 <div class="input-group">
-                    <label for="name-input">👤 プレイヤー名：</label>
-                    <input type="text" id="name-input" placeholder="例：1班_斎藤">
+                    <label for="name-input">👥 チーム名：</label>
+                    <input type="text" id="name-input" placeholder="例：1班">
                 </div>
+
+                <div class="input-group input-group-size">
+                    <label for="team-size-select">🧑‍🤝‍🧑 チーム人数：</label>
+                    <select id="team-size-select">
+                        <option value="">選択</option>
+                        <option value="1">1人</option>
+                        <option value="2">2人</option>
+                        <option value="3">3人</option>
+                        <option value="4">4人</option>
+                        <option value="5">5人</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 🌟 チーム人数に応じて、学籍番号と氏名の入力欄を表示する（最大5人） -->
+            <div id="member-section" class="member-section hidden">
+                <p class="section-label">メンバー：</p>
+                <div id="member-fields"></div>
             </div>
 
             <div class="difficulty-section">
@@ -132,7 +150,7 @@
         <h2>経営メイン画面（第 <span id="current-year">1</span> 年目）</h2>
 
         <div class="status-panel" style="background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: left;">
-            <p>👤 経営者: <span id="display-player-name" style="font-weight: bold;">-</span> さん</p>
+            <p>👥 チーム: <span id="display-player-name" style="font-weight: bold;">-</span></p>
             <p>🗺️ 選択された農地: <span id="land-name" style="font-weight: bold; color: #2e75b6;">-</span></p>
             <p>💰 現在の総経営資金: <span id="money" style="font-weight: bold; color: #1e40af; font-size: 20px;">-</span> 円</p>
         </div>
