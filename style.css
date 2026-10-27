@@ -54,15 +54,15 @@ body {
     z-index: 10;
     background: #ffffff;
     width: 95%;
-    max-width: 760px; /* 🌟 横幅を広く取る */
+    max-width: 920px; /* 🌟 横幅を広く取り、そのぶん縦を短くしてタイトルに重ならないようにする */
     margin-top: 0;
-    margin-bottom: clamp(16px, 12vh, 100px); /* 🌟 画面下端からの余白（高い画面ほど少し浮かせる） */
-    padding: 24px 32px;
+    margin-bottom: clamp(12px, 5vh, 64px); /* 🌟 画面下端からの余白（高い画面ほど少し浮かせる） */
+    padding: 18px 28px;
     border-radius: 16px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     flex-shrink: 0;
 }
 
@@ -82,14 +82,14 @@ body {
     display: block;
     font-weight: bold;
     color: #475569;
-    margin-bottom: 8px;
-    font-size: 14px;
+    margin-bottom: 6px;
+    font-size: 13px;
 }
 
 .input-group input,
 input[type="text"] {
     width: 100%;
-    padding: 12px 14px;
+    padding: 10px 14px;
     background: #f8fafc;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
@@ -109,7 +109,7 @@ input[type="text"] {
 /* 🌟 難易度選択エリアのデザイン（これも横並びに変更） */
 .difficulty-section {
     border-top: 1px solid #e2e8f0;
-    padding-top: 20px;
+    padding-top: 12px;
     display: flex;
     align-items: center; /* ラベルとボタンの縦位置を揃える */
     gap: 20px;
@@ -132,7 +132,7 @@ input[type="text"] {
 /* ボタン共通デザイン */
 .btn-diff {
     flex: 1;
-    padding: 14px 0;
+    padding: 12px 0;
     font-size: 15px;
     font-weight: bold;
     color: white;
@@ -905,7 +905,7 @@ body.admin-mode {
 
 .input-group select {
     width: 100%;
-    padding: 12px 10px;
+    padding: 10px 10px;
     background: #f8fafc;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
@@ -923,44 +923,60 @@ body.admin-mode {
 
 .member-section {
     border-top: 1px solid #e2e8f0;
-    padding-top: 16px;
+    padding-top: 12px;
+    display: flex;
+    align-items: flex-start; /* 「メンバー：」を左に置き、入力欄を右に並べる */
+    gap: 16px;
 }
 
 .member-section .section-label {
-    white-space: normal;
-    margin-bottom: 10px;
+    padding-top: 1px;
 }
 
+/* 🌟 1人ずつ縦（番号・学籍番号・氏名）にまとめ、最大5人を横一列に並べる（人数が増えても高さが変わらない） */
 #member-fields {
+    flex: 1;
+    min-width: 0;
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 🌟 2列に並べて縦の長さを短くする */
-    gap: 8px 16px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px 10px;
 }
 
 .member-row {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     min-width: 0;
 }
 
 .member-row .member-no {
-    flex: 0 0 42px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: bold;
     color: #475569;
 }
 
 .member-row input[type="text"] {
-    padding: 9px 12px;
+    width: 100%;
+    padding: 7px 10px;
     font-size: 14px;
 }
 
-.member-row .member-id-input { flex: 0 0 112px; width: 112px; }
-.member-row .member-name-input { flex: 1; width: auto; min-width: 0; }
+/* 背の低い画面（ノートPCのブラウザなど）では余白をさらに詰めて、タイトルを隠さないようにする */
+@media (max-height: 640px) {
+    .start-card { padding: 12px 24px; gap: 10px; }
+    .input-group label { margin-bottom: 3px; }
+    .input-group input, .input-group select { padding-top: 7px; padding-bottom: 7px; }
+    .member-section, .difficulty-section { padding-top: 10px; }
+    .member-row input[type="text"] { padding-top: 6px; padding-bottom: 6px; }
+    .btn-diff { padding: 10px 0; }
+}
 
-/* 狭い画面（スマートフォンなど）では1列に戻す */
+/* 狭い画面（スマートフォンなど）では1人1行の縦並びに戻す */
 @media (max-width: 640px) {
-    #member-fields { grid-template-columns: 1fr; }
-    .member-row .member-id-input { flex-basis: 120px; width: 120px; }
+    .member-section { flex-direction: column; gap: 8px; }
+    #member-fields { grid-template-columns: 1fr; width: 100%; }
+    .member-row { flex-direction: row; align-items: center; gap: 8px; }
+    .member-row .member-no { flex: 0 0 42px; }
+    .member-row .member-id-input { flex: 0 0 120px; width: 120px; }
+    .member-row .member-name-input { flex: 1; width: auto; min-width: 0; }
 }
