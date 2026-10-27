@@ -42,10 +42,8 @@
             </div>
 
             <div class="difficulty-section">
-                <p class="section-label">難易度を選択：</p>
                 <div class="button-group">
-                    <button id="start-beginner-btn" class="btn-diff btn-beginner">🌱 初心者</button>
-                    <button id="start-advanced-btn" class="btn-diff btn-advanced">🔥 上級者</button>
+                    <button id="start-game-btn" class="btn-diff btn-beginner">🌱 ゲームスタート</button>
                 </div>
             </div>
         </div>
@@ -104,7 +102,7 @@
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
                             <span style="font-size:10px; color:#64748b; display:block;">現在残高（投資見込）</span>
-                            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">100,000,000 円</span>
+                            <span id="sum-current-money" style="font-size:14px; font-weight:bold; color:#1e40af; display:block; text-align:right;">50,000,000 円</span>
                         </div>
                         <div style="background:#fff; padding: 6px 10px; border-radius:4px; border:1px solid #e2e8f0;">
                             <span style="font-size:10px; color:#64748b; display:block;">累計費用</span>
@@ -126,8 +124,7 @@
                 </div>
 
                 <div id="status-bar" class="hidden">
-                    🔑 ID: <span id="display-room-id">-</span> | 
-                    🌱 難易度: <span id="display-difficulty">-</span>
+                    🔑 ID: <span id="display-room-id">-</span>
                 </div>
 
                 <button id="log-toggle-btn" onclick="openLogModal()">📊 経営履歴（PDCA）</button>
@@ -265,7 +262,7 @@
 
             <button id="log-toggle-btn-result" onclick="openLogModal()" style="margin-bottom: 15px;">📊 経営履歴（PDCA）を見る</button>
             <br>
-            <button onclick="window.location.reload();" style="background: #28a745; color: white; padding: 12px 35px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+            <button onclick="restartGame();" style="background: #28a745; color: white; padding: 12px 35px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
                 タイトルに戻って再挑戦
             </button>
         </div>
@@ -291,10 +288,9 @@
     <script src="markets.js"></script>
     <script src="events.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config_beginner.js"></script>
     <script src="config_advanced.js"></script>
     
-    <script src="game.js?v=22"></script> 
+    <script src="game.js?v=23"></script> 
 
 </body>
 </html>

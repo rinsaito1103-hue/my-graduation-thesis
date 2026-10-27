@@ -102,7 +102,6 @@
                             <option value="normal" selected>通常（変動なし）</option>
                             <option value="boom_exotic">📈 ブーム（外来野菜: アーティチョーク高騰）</option>
                             <option value="boom_traditional">📈 ブーム（伝統野菜: 仙台白菜高騰）</option>
-                            <option value="rival">📉 ライバル出現（六次産業価格下落）</option>
                             <option value="bumper_crop">📉 豊作貧乏（一般的な野菜の価格暴落）</option>
                             <option value="poor_crop">📈 全国的な凶作（価格急高騰）</option>
                             <option value="fuel_surge">💸 燃料・資材コスト高騰（費用増加）</option>
@@ -245,7 +244,7 @@
                     }
                     
                     // グラフ用
-                    if (!chartDataMap[pName]) chartDataMap[pName] = { 0: 100000000 }; // 初期資金1億円
+                    if (!chartDataMap[pName]) chartDataMap[pName] = { 0: 50000000 }; // 初期資金5,000万円
                     chartDataMap[pName][log.year] = money;
                     if (log.year > maxYear) maxYear = log.year;
                 });
@@ -287,7 +286,7 @@
 
                 for (const [pName, years] of Object.entries(chartDataMap)) {
                     const dataPoints = [];
-                    let lastVal = 100000000;
+                    let lastVal = 50000000;
                     for (let i = 0; i <= maxYear; i++) {
                         if (years[i] !== undefined) lastVal = years[i];
                         dataPoints.push(Math.round(lastVal / 10000)); // 万円単位

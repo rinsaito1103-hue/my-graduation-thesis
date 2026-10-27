@@ -3,14 +3,14 @@
 let gameState = {
     playerName: "",
     year: 1,
-    money: 100000000,
+    money: 50000000,
     cumExpenses: 0,
     cumRevenue: 0,
     currentLand: null,
     landStrategies: [],
     landHistory: [],
     history: [
-        { year: 0, money: 100000000, expense: 0, revenue: 0 }
+        { year: 0, money: 50000000, expense: 0, revenue: 0 }
     ]
 };
 
@@ -20,6 +20,12 @@ let initialMoney = 0;
 // 🌟【新設】先生からのイベントデータを受信・保持するための変数
 let receivedGlobalEventId = null;
 let receivedLocalEventId = null;
+
+// 💾 再読み込み対策：進行状況をブラウザ（localStorage）に保存して、続きから再開できるようにする
+// gamePhase: "title" → "reveal"（土地公開）→ "setup"（戦略設定）→ "running"（イベント待ち）→ "settled"（決算済み）→ "finished"（3年終了）
+let gamePhase = "title";
+let pendingNextEvents = null; // 決算後〜次年度設定前に届いたイベント（次の年度に使う）
+const SAVE_KEY = "notore_save_v1";
 
 // 📡【新設】Supabase 受信アンテナの設定
 const SUPABASE_URL = 'https://lozwsuhkcbuzbdynnyml.supabase.co';
@@ -36,8 +42,7 @@ const gameContainer = document.getElementById("game-container");
 const resultScreen = document.getElementById("result-screen");
 
 const nameInput = document.getElementById("name-input");
-const startBeginnerBtn = document.getElementById("start-beginner-btn"); // 
-const startAdvancedBtn = document.getElementById("start-advanced-btn"); //
+const startGameBtn = document.getElementById("start-game-btn"); // モードは1つに統一（上級者用の設定を使用）
 const beginBusinessBtn = document.getElementById("begin-business-btn");
 const endYearBtn = document.getElementById("end-year-btn");
 
@@ -306,17 +311,14 @@ window.calculateLiveCardCost = function(cardOrIdx) {
     }
 
     const hasOrganic = card.querySelector(".asset-organic")?.checked;
-    const hasIT = card.querySelector(".asset-it")?.checked && !card.querySelector(".asset-it")?.disabled;
-    const hasFertilizer = card.querySelector(".asset-fertilizer")?.checked;
 
     let replantMultiplier = 1.0;
     let replantStatusText = "<span style='color:#64748b;'>正常（輪作/1年目）</span>";
 
+    // 連作障害を防げるのは有機のみ（ITシステムを使っていても連作障害は起こる）
     if (tempCounter > 0) {
         if (hasOrganic) {
             replantStatusText = "<span style='color:#2e75b6;'>🌿 有機防衛（被害無効化）</span>";
-        } else if (hasIT && hasFertilizer) {
-            replantStatusText = "<span style='color:#2e75b6;'>💻🧪 データ施肥（被害無効化）</span>";
         } else {
             if (tempCounter === 1) { replantMultiplier = 0.8; replantStatusText = "<span style='color:#f59e0b; font-weight:bold;'>⚠️ 連作2年目 (収量0.8倍)</span>"; }
             else if (tempCounter === 2) { replantMultiplier = 0.4; replantStatusText = "<span style='color:#dc2626; font-weight:bold;'>🚨 連作3年目 (収量0.4倍)</span>"; }
@@ -365,6 +367,11 @@ window.calculateLiveCardCost = function(cardOrIdx) {
 
     let cardTotalInvestment = seedCost + laborCost + assetCost + landCostBase;
     let estimatedProfit = Math.round(estimatedRevenue - cardTotalInvestment); 
+
+    // 経営開始時の「計画見込利益」にこの予測値をそのまま使う（連作障害も含めて予測と一致させる）
+    card.dataset.estimatedProfit = estimatedProfit;
+    card.dataset.cardInvestment = cardTotalInvestment;
+    card.dataset.laborCost = laborCost;
 
     const idx = card.getAttribute("data-idx");
     const simTable = document.getElementById(`simulation-table-${idx}`);
@@ -654,22 +661,12 @@ function startGame(config) {
     gameState.members = teamResult.members; // 🌟学籍番号と氏名（最大5人）
     saveTeamMembers(roomId, name, teamResult.members);
     gameState.difficulty = config.id;
+    gameState.difficultyName = config.name;
     initialMoney = config.startMoney;
     currentMoney = config.startMoney;
 
     // 🌟ここに追加：入力されたルームID専用の通信アンテナを立てる
-    const channel = supabaseClient.channel(`room-${roomId}`);
-    channel.on('broadcast', { event: 'yearly_events' }, payload => {
-        console.log("📡 先生からイベントを受信しました！", payload);
-        receivedGlobalEventId = payload.payload.global_id;
-        let localId = payload.payload.local_id;
-        if (localId === "random_per_team") {
-            const randIdx = Math.floor(Math.random() * LOCAL_EVENTS.length);
-            localId = LOCAL_EVENTS[randIdx].id;
-        }
-        receivedLocalEventId = localId;
-        checkAndEnableEndYearBtn(); 
-    }).subscribe();
+    subscribeRoomEvents(roomId);
 
     // 🌟 分離した設定ファイルから初期資金を読み込んでセットする
     gameState.money = config.startMoney;
@@ -705,16 +702,14 @@ function startGame(config) {
 
     // 🌟 ステータスバーを更新して表示
     document.getElementById("display-room-id").textContent = gameState.roomId;
-    document.getElementById("display-difficulty").textContent = config.name;
     document.getElementById("status-bar").classList.remove("hidden");
 
-    startScreen.classList.add("hidden");
-    landRevealScreen.classList.remove("hidden");
+    gamePhase = "reveal";
+    saveProgress();
 }
 
-// 🌟 ボタンを押したときに、作成した設定オブジェクトを渡す
-startBeginnerBtn.addEventListener("click", () => startGame(CONFIG_BEGINNER));
-startAdvancedBtn.addEventListener("click", () => startGame(CONFIG_ADVANCED));
+// 🌟 ボタンを押したときに、設定オブジェクトを渡す（モードは1つに統一）
+startGameBtn.addEventListener("click", () => startGame(CONFIG_ADVANCED));
 
 // 土地公開 → 戦略設定へ進むボタン（新規追加）
 document.getElementById("land-reveal-proceed-btn").addEventListener("click", () => {
@@ -728,6 +723,9 @@ document.getElementById("land-reveal-proceed-btn").addEventListener("click", () 
     landRevealScreen.classList.add("hidden");
     setupScreen.classList.remove("hidden");
     setTimeout(renderFinancialChart, 50);
+
+    gamePhase = "setup";
+    saveProgress();
 });
 
 // --- 5. セットアップ完了 ➔ 経営開始 ---
@@ -824,74 +822,12 @@ beginBusinessBtn.addEventListener("click", () => {
     }
 
     currentYearPlannedProfitSum = 0;
-    cards.forEach((c,index) => {
-        const cropId = c.querySelector(".land-crop-select").value;
-        const landCostBase = gameState.currentLand ? gameState.currentLand.cost : 0;
-        const crop = CROP_MASTER.find(cr => cr.id === cropId);
-        let baseYieldPerUnit = crop ? crop.yieldPerUnit : 0;
-        
-        const yKey = "year" + gameState.year;
-        let lPower = gameState.currentLand ? gameState.currentLand.power[yKey] : 1.0;
-        
-        let lCost = 0; let wCount = 0; let tShortage = false; let tMultiplier = 0;
-        let cRank = "C";
-        if (["corn", "daikon"].includes(cropId)) cRank = "B";
-        if (["tomato", "strawberry", "japanese_parsley"].includes(cropId)) cRank = "A";
-        if (["hakusai", "artichoke"].includes(cropId)) cRank = "S";
-        const hasIT = c.querySelector(".asset-it")?.checked;
-        
-        c.querySelectorAll(".land-worker-select").forEach(sel => {
-            if (sel.disabled) return;
-            wCount++;
-            const empData = EMPLOYEE_MASTER.find(e => e.id === sel.value);
-            if (empData) {
-                lCost += empData.cost;
-                let wRate = empData.rates[cRank];
-                if (hasIT && empData.needIT[cRank]) wRate = 1.0;
-                if (wRate === 0.0) tShortage = true;
-                tMultiplier += wRate;
-            }
-        });
-        if (tShortage) tMultiplier = 0;
-        let avgM = wCount > 0 ? (tMultiplier / wCount) : 0;
-        let pYield = baseYieldPerUnit * lPower * avgM;
-        
-        const marketId = c.querySelector(".land-market-select").value;
-        let bPrice = 0;
-        const mObj = MARKET_MASTER.find(m => m.id === marketId);
-        if (mObj) bPrice = mObj.prices[cropId] || 0;
-        
-        let aSale = pYield;
-        if (marketId === "restaurant" && aSale > 200) aSale = 200;
-        if (marketId === "natural_store" && aSale > 250) aSale = 250;
-        let estRev = Math.round(aSale * bPrice);
-        
-        let seedCost = 0;
-        if (cropId === "cabbage") seedCost = 5000;
-        else if (cropId === "corn") seedCost = 10000;
-        else if (cropId === "strawberry") seedCost = 12000;
-        else if (cropId === "tomato") seedCost = 10000;
-        else if (cropId === "hakusai") seedCost = 8000;
-        else if (cropId === "artichoke") seedCost = 12000;
-        else if (cropId === "daikon") seedCost = 16000;
-        else if (cropId === "japanese_parsley") seedCost = 8000;
-        
-        let assetCost = 0;
-        const machineryCb = c.querySelector(".asset-machinery");
-        if (machineryCb?.checked && !machineryCb.disabled) assetCost += getAssetCost("machinery");
-        const greenhouseCb = c.querySelector(".asset-house");
-        if (greenhouseCb?.checked && !greenhouseCb.disabled) assetCost += getAssetCost("greenhouse");
-        const itCb = c.querySelector(".asset-it");
-        if (itCb?.checked && !itCb.disabled) assetCost += getAssetCost("it_system");
-        if (c.querySelector(".asset-pesticide")?.checked) assetCost += getAssetCost("pesticide");
-        if (c.querySelector(".asset-fertilizer")?.checked) assetCost += getAssetCost("fertilizer");
-        if (c.querySelector(".asset-organic")?.checked) assetCost += getAssetCost("organic");
-        
-        let totalInv = seedCost + lCost + assetCost + landCostBase;
-        currentYearPlannedProfitSum += Math.round(estRev - totalInv);
+    cards.forEach((c, index) => {
+        calculateLiveCardCost(c); // 画面の予測表と同じ計算（連作障害を含む）で見込利益を出す
+        currentYearPlannedProfitSum += Number(c.dataset.estimatedProfit) || 0;
         if (gameState.landStrategies[index]) {
-            gameState.landStrategies[index].cardInvestment = totalInv;
-            gameState.landStrategies[index].laborCost = lCost;
+            gameState.landStrategies[index].cardInvestment = Number(c.dataset.cardInvestment) || 0;
+            gameState.landStrategies[index].laborCost = Number(c.dataset.laborCost) || 0;
         }
     });
 
@@ -920,6 +856,9 @@ beginBusinessBtn.addEventListener("click", () => {
 
     setupScreen.classList.add("hidden");
     gameContainer.classList.remove("hidden");
+
+    gamePhase = "running";
+    saveProgress();
 });
 
 // --- 6. 決算ダッシュボードへの出力 ---
@@ -936,6 +875,7 @@ const stmtTotalRevenue = document.getElementById("stmt-total-revenue");
 const stmtEndMoney = document.getElementById("stmt-end-money");
 
 endYearBtn.addEventListener("click", () => {
+    if (gamePhase !== "running") return; // 二重決算の防止
     const globalEvent = GLOBAL_EVENTS.find(e => e.id === receivedGlobalEventId) || GLOBAL_EVENTS[0];
     const localEvent = LOCAL_EVENTS.find(e => e.id === receivedLocalEventId) || LOCAL_EVENTS[0];
 
@@ -1020,10 +960,11 @@ endYearBtn.addEventListener("click", () => {
         else if (localEvent.id === "animal_damage") {
             if (hasGreenhouse) {
                 strat.assets = assets.filter(a => a.id !== "greenhouse");
-                // 🏠 獣害で破壊されても、翌年には無償で自動修復され効果が復活する
+                // 🏠 獣害でハウスは破壊される。有効期限を消すので、もう一度費用を払って導入しない限り効果はない
                 const hhHist = gameState.landHistory[index] || { lastFamily: null, consecutiveCounter: 0, machineryExpireYear: null, greenhouseExpireYear: null };
-                hhHist.greenhouseExpireYear = Math.max(hhHist.greenhouseExpireYear || 0, gameState.year + 1);
+                hhHist.greenhouseExpireYear = null;
                 gameState.landHistory[index] = hhHist;
+                shieldStatus = "💥ハウス破壊";
             }
             yieldRate *= 0;
         }
@@ -1062,13 +1003,12 @@ endYearBtn.addEventListener("click", () => {
         else tempCounter = 0;
 
         const hasFinalOrganic = assets.some(a => a.id === "organic");
-        const hasFinalFertilizer = assets.some(a => a.id === "fertilizer");
 
         let replantMultiplier = 1.0;
         let replantLabel = "";
         
         if (tempCounter > 0) {
-            if (hasFinalOrganic || (hasFinalIT && hasFinalFertilizer)) {
+            if (hasFinalOrganic) {
                 // 回避成功
             } else {
                 if (tempCounter === 1) { replantMultiplier = 0.8; replantLabel = "⚠️連作障害(軽)"; }
@@ -1161,7 +1101,7 @@ endYearBtn.addEventListener("click", () => {
     stmtEndMoney.textContent = `${gameState.money.toLocaleString()} 円`;
 
     if (!gameState.history) {
-        gameState.history = [{ year: 0, money: 100000000, expense: 0, revenue: 0 }];
+        gameState.history = [{ year: 0, money: 50000000, expense: 0, revenue: 0 }];
     }
     gameState.history.push({
         year: gameState.year,
@@ -1211,7 +1151,7 @@ endYearBtn.addEventListener("click", () => {
 
             localReasonEl.textContent = `地域に【${localEvent.name}】が発生し、作物の収穫量が大きく低下しました。${isShielded ? 'しかし、事前に導入していた防衛資材（施設や農薬など）が一部の農地で作物をガードしました。' : '資材・施設による防御が不足していた農地では、大きな機会損失（下振れ要因）となっています。'}`;
         } else if (localEvent.id === "animal_damage") {
-            localReasonEl.textContent = `最悪の災害【${localEvent.name}】が発生。ハウス施設などの有無に関わらず、すべての作物が食い荒らされ収穫量が強制的に0kgとなりましたビニールハウスは破壊されますが、翌年には自動で修復されます。`;
+            localReasonEl.textContent = `最悪の災害【${localEvent.name}】が発生。ハウス施設などの有無に関わらず、すべての作物が食い荒らされ収穫量が強制的に0kgとなりました。ビニールハウスは破壊されたため、再び使うには導入費用をもう一度支払う必要があります。`;
         } else if (localEvent.id === "good_weather") {
             localReasonEl.textContent = `奇跡の【${localEvent.name}】が到来！全ての農地で収穫量が2倍に大ブーストされ、計画を大きく上回る収益をもたらした最大の要因です。`;
         } else {
@@ -1268,6 +1208,8 @@ endYearBtn.addEventListener("click", () => {
         room_id: gameState.roomId,
         player_name: gameState.playerName,
         year: gameState.year,
+        land_id: gameState.currentLand ? gameState.currentLand.id : null,     // 🌟割り当てられた土地の種類（lands.js の id）
+        land_name: gameState.currentLand ? gameState.currentLand.name : null, // 🌟土地の名前
         current_money: gameState.money,
         investments: allAssets.length > 0 ? allAssets.join('・') : 'なし',
         staff_count: staffCount,
@@ -1289,6 +1231,9 @@ endYearBtn.addEventListener("click", () => {
     financialDashboard.classList.remove("hidden");
     endYearBtn.classList.add("hidden");
     nextYearPhaseBtn.classList.remove("hidden");
+
+    gamePhase = "settled";
+    saveProgress();
 });
 
 // --- 7. 次の年への移行フェーズ ---
@@ -1302,8 +1247,10 @@ nextYearPhaseBtn.addEventListener("click", () => {
         saveCurrentStrategies();
         gameState.year += 1;
 
-        receivedGlobalEventId = null;
-        receivedLocalEventId = null;
+        // 決算後に先に届いていたイベントがあれば、それを今年度のイベントとして使う
+        receivedGlobalEventId = pendingNextEvents ? pendingNextEvents.globalId : null;
+        receivedLocalEventId = pendingNextEvents ? pendingNextEvents.localId : null;
+        pendingNextEvents = null;
 
         generateLandStrategyUI(); 
         updateSetupFinancialBanner(); 
@@ -1311,11 +1258,25 @@ nextYearPhaseBtn.addEventListener("click", () => {
         gameContainer.classList.add("hidden");
         setupScreen.classList.remove("hidden");
         setTimeout(renderFinancialChart, 50);
+
+        gamePhase = "setup";
+        saveProgress();
     }
 });
 
 function saveCurrentStrategies() {
     const cards = landCardsContainer.querySelectorAll(".land-strategy-card");
+    if (cards.length === 0) {
+        // 再読み込み後は設定画面が作られていないので、確定済みの戦略データから引き継ぐ
+        gameState.landStrategies.forEach(strat => {
+            if (!strat) return;
+            strat.cropId = strat.crop ? strat.crop.id : "";
+            strat.marketId = strat.market ? strat.market.id : "";
+            strat.employeeIds = (strat.employees || []).map(e => e.id);
+            strat.assetIds = (strat.assets || []).map(a => a.id);
+        });
+        return;
+    }
     cards.forEach((card, idx) => {
         if (!gameState.landStrategies[idx]) {
             gameState.landStrategies[idx] = {};
@@ -1336,7 +1297,8 @@ function saveCurrentStrategies() {
 
         let assetIds = [];
         if (card.querySelector(".asset-machinery")?.checked) assetIds.push("machinery");
-        if (card.querySelector(".asset-house")?.checked) assetIds.push("greenhouse");
+        // 🏠 獣害で破壊されたハウス（有効期限が消えたもの）は次年度に自動でチェックしない
+        if (card.querySelector(".asset-house")?.checked && gameState.landHistory[idx]?.greenhouseExpireYear) assetIds.push("greenhouse");
         if (card.querySelector(".asset-it")?.checked) assetIds.push("it_system");
         if (card.querySelector(".asset-pesticide")?.checked) assetIds.push("pesticide");
         if (card.querySelector(".asset-fertilizer")?.checked) assetIds.push("fertilizer");
@@ -1347,13 +1309,15 @@ function saveCurrentStrategies() {
 }
 
 function showFinalResult() {
-    if (gameState.money >= 200000000) {
+    // 評価ランクは初期資金に対する倍率で判定（S: 2倍以上 / A: 1.5倍以上 / B: 初期資金以上）
+    const startMoney = initialMoney || gameState.history[0].money;
+    if (gameState.money >= startMoney * 2) {
         resultRankElement.textContent = "🏆 ランクＳ：伝説のメガ農家";
         resultCommentElement.textContent = `素晴らしい！すべての農地に最適な人材と資材を個別配分し、リスクを完璧にヘッジしました。素晴らしい采配です！`;
-    } else if (gameState.money >= 150000000) {
+    } else if (gameState.money >= startMoney * 1.5) {
         resultRankElement.textContent = "🏅 ランクＡ：敏腕グリーン経営者";
         resultCommentElement.textContent = `黒字を安定して確保し、近代的な営農スタイルを確立できています。さらに高みを目指しましょう！`;
-    } else if (gameState.money >= 100000000) {
+    } else if (gameState.money >= startMoney) {
         resultRankElement.textContent = "🚜 ランクＢ：中堅ベテラン農家";
         resultCommentElement.textContent = `手堅い経営ですが、イベントの波に少し飲まれてしまったかもしれません。機材や人材への投資バランスを見直してみましょう。`;
     } else {
@@ -1366,6 +1330,9 @@ function showFinalResult() {
     gameContainer.classList.add("hidden");
     resultScreen.classList.remove("hidden");
 
+    gamePhase = "finished";
+    saveProgress();
+
     setTimeout(() => {
         renderFinalSummaryChart();
     }, 50);
@@ -1374,6 +1341,8 @@ function showFinalResult() {
         {
             room_id: gameState.roomId,
             player_name: gameState.playerName,
+            land_id: gameState.currentLand ? gameState.currentLand.id : null,     // 🌟割り当てられた土地の種類
+            land_name: gameState.currentLand ? gameState.currentLand.name : null,
             final_money: gameState.money
         }
     ], { onConflict: 'room_id,player_name' }).then(response => {
@@ -1635,3 +1604,127 @@ function renderLogs() {
         container.appendChild(card);
     }
 }
+
+// ==========================================================================
+// 💾 再読み込み対策：イベント受信・進行状況の保存・再開
+// ==========================================================================
+
+// 先生からのイベントを受信するチャンネルに接続する
+function subscribeRoomEvents(roomId) {
+    const channel = supabaseClient.channel(`room-${roomId}`);
+    channel.on('broadcast', { event: 'yearly_events' }, payload => {
+        console.log("📡 先生からイベントを受信しました！", payload);
+        const globalId = payload.payload.global_id;
+        let localId = payload.payload.local_id;
+        if (localId === "random_per_team") {
+            const randIdx = Math.floor(Math.random() * LOCAL_EVENTS.length);
+            localId = LOCAL_EVENTS[randIdx].id;
+        }
+
+        if (gamePhase === "finished") return;
+        if (gamePhase === "settled") {
+            // 今年度は決算済みなので、次年度のイベントとして取っておく
+            pendingNextEvents = { globalId, localId };
+            saveProgress();
+            return;
+        }
+        if (receivedGlobalEventId && receivedLocalEventId) {
+            // 今年度のイベントは受信済み（先生が受信できなかった班のために再送信した場合など）
+            console.log("今年度のイベントは受信済みのため、再送信分は無視しました");
+            return;
+        }
+        receivedGlobalEventId = globalId;
+        receivedLocalEventId = localId;
+        checkAndEnableEndYearBtn();
+        saveProgress();
+    }).subscribe();
+}
+
+function saveProgress() {
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+            gameState, initialMoney, currentMoney, businessLogs,
+            currentYearExpenses, currentYearStartMoney, currentYearPlannedProfitSum,
+            receivedGlobalEventId, receivedLocalEventId, pendingNextEvents, gamePhase
+        }));
+    } catch (e) {
+        console.warn("進行状況を保存できませんでした", e);
+    }
+}
+
+function clearProgress() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 保存できない環境では何もしない */ }
+}
+
+// 「タイトルに戻って再挑戦」：保存データを消してから最初に戻る
+window.restartGame = function() {
+    clearProgress();
+    window.location.reload();
+};
+
+// 保存データから、再読み込み前の画面に戻す
+function restoreProgress(saved) {
+    gameState = saved.gameState;
+    initialMoney = saved.initialMoney;
+    currentMoney = saved.currentMoney;
+    businessLogs = saved.businessLogs || [];
+    currentYearExpenses = saved.currentYearExpenses || 0;
+    currentYearStartMoney = saved.currentYearStartMoney || 0;
+    currentYearPlannedProfitSum = saved.currentYearPlannedProfitSum || 0;
+    receivedGlobalEventId = saved.receivedGlobalEventId;
+    receivedLocalEventId = saved.receivedLocalEventId;
+    pendingNextEvents = saved.pendingNextEvents;
+    gamePhase = saved.gamePhase;
+
+    document.getElementById("display-room-id").textContent = gameState.roomId;
+    document.getElementById("status-bar").classList.remove("hidden");
+    displayPlayerName.textContent = gameState.playerName;
+    landNameElement.textContent = gameState.currentLand.name;
+    moneyElement.textContent = gameState.money.toLocaleString();
+    currentYearElement.textContent = gameState.year;
+
+    subscribeRoomEvents(gameState.roomId);
+    startScreen.classList.add("hidden");
+
+    if (gamePhase === "reveal" || gamePhase === "setup") {
+        // 戦略設定の途中で再読み込みした場合は、設定画面からやり直す（選びかけの内容は残らない）
+        setupLandName.textContent = gameState.currentLand.name;
+        setupLandDesc.textContent = gameState.currentLand.desc;
+        generateLandStrategyUI();
+        updateSetupFinancialBanner();
+        setupScreen.classList.remove("hidden");
+        setTimeout(renderFinancialChart, 50);
+        gamePhase = "setup";
+        saveProgress();
+    } else if (gamePhase === "running") {
+        // 投資は確定済み。イベントを受信済みなら、そのまま決算できる
+        gameContainer.classList.remove("hidden");
+        financialDashboard.classList.add("hidden");
+        endYearBtn.classList.remove("hidden");
+        nextYearPhaseBtn.classList.add("hidden");
+        checkAndEnableEndYearBtn();
+    } else if (gamePhase === "settled") {
+        // 決算済み。結果は経営履歴（PDCA）で確認でき、次年度へ進める
+        gameContainer.classList.remove("hidden");
+        financialDashboard.classList.add("hidden");
+        endYearBtn.classList.add("hidden");
+        nextYearPhaseBtn.classList.remove("hidden");
+        openLogModal();
+    } else if (gamePhase === "finished") {
+        showFinalResult();
+    }
+}
+
+// ページを開いたときに、途中のゲームがあれば再開するか確認する
+(function resumeIfSaved() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { saved = null; }
+    if (!saved || !saved.gameState || !saved.gameState.currentLand || saved.gamePhase === "title") return;
+
+    const label = saved.gamePhase === "finished" ? "3年間の結果" : `第${saved.gameState.year}年目`;
+    if (confirm(`前回のゲーム（${saved.gameState.playerName}・${label}）の続きから再開しますか？\n「キャンセル」を押すと最初から始めます。`)) {
+        restoreProgress(saved);
+    } else {
+        clearProgress();
+    }
+})();

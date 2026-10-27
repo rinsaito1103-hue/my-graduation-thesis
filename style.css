@@ -27,12 +27,13 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
-    background-image: url('Title.png'); /* ※拡張子がpngの場合は直してください */
+    background-image: url('Title.webp'); /* ※拡張子がpngの場合は直してください */
     background-size: cover;
     background-position: center;
     display: flex;
     flex-direction: column;
-    justify-content: safe center; /* 一旦画面の中央を基準にする（はみ出す場合は上から表示） */
+    justify-content: flex-end; /* 🌟 入力パネルを画面の下側に寄せ、メンバー欄が増えたら上へ伸ばす（スクロール不要に） */
+    justify-content: safe flex-end; /* 画面に収まらない場合だけ上から表示してスクロール */
     align-items: center;
     overflow-x: hidden;
     overflow-y: auto; /* メンバー入力欄が増えても、スクロールで全体を見られるようにする */
@@ -42,7 +43,7 @@ body {
     position: fixed; /* 🌟 スクロールしても背景に固定（一緒に動かない） */
     top: 0; left: 0; width: 100vw; height: 100vh;
     /* 🌟 背景の絵と文字が綺麗に見えるよう、暗さを少し控えめに調整 */
-    background: rgba(51, 46, 46, 0.25);
+    background: rgba(51, 46, 46, 0.10);
     z-index: 1;
     pointer-events: none;
 }
@@ -53,15 +54,15 @@ body {
     z-index: 10;
     background: #ffffff;
     width: 95%;
-    max-width: 700px; /* 🌟 横幅を広く取る */
-    margin-top: 50vh; /* 🌟 画面中央から下へずらし、文字のすぐ下に配置する */
-    padding: 30px 40px;
+    max-width: 760px; /* 🌟 横幅を広く取る */
+    margin-top: 0;
+    margin-bottom: clamp(16px, 12vh, 100px); /* 🌟 画面下端からの余白（高い画面ほど少し浮かせる） */
+    padding: 24px 32px;
     border-radius: 16px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    margin-bottom: 24px; /* 画面下端との余白 */
+    gap: 16px;
     flex-shrink: 0;
 }
 
@@ -930,15 +931,21 @@ body.admin-mode {
     margin-bottom: 10px;
 }
 
+#member-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 🌟 2列に並べて縦の長さを短くする */
+    gap: 8px 16px;
+}
+
 .member-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 8px;
+    min-width: 0;
 }
 
 .member-row .member-no {
-    flex: 0 0 56px;
+    flex: 0 0 42px;
     font-size: 13px;
     font-weight: bold;
     color: #475569;
@@ -949,5 +956,11 @@ body.admin-mode {
     font-size: 14px;
 }
 
-.member-row .member-id-input { flex: 0 0 170px; width: 170px; }
+.member-row .member-id-input { flex: 0 0 112px; width: 112px; }
 .member-row .member-name-input { flex: 1; width: auto; min-width: 0; }
+
+/* 狭い画面（スマートフォンなど）では1列に戻す */
+@media (max-width: 640px) {
+    #member-fields { grid-template-columns: 1fr; }
+    .member-row .member-id-input { flex-basis: 120px; width: 120px; }
+}
