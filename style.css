@@ -28,12 +28,21 @@ body {
     width: 100vw;
     height: 100vh;
     background-image: url('Title.webp'); /* ※拡張子がpngの場合は直してください */
-    background-size: cover;
-    background-position: center;
+    /* 🌟 背景の大きさと位置を自分で計算し、タイトル文字を画面の上に寄せる
+       （Title.webp は 1280×853。タイトル文字は画像の幅を1としたとき、上端0.118〜下端0.356の位置にある） */
+    --bg-w: max(100vw, 150.06vh);                 /* cover と同じ：画面を覆う最小の幅 */
+    --bg-h: calc(var(--bg-w) * 0.6664);           /* 853 / 1280 */
+    --bg-y: min(0px, max(calc(100vh - var(--bg-h)), calc(20px - var(--bg-w) * 0.118))); /* タイトル上端を画面上から20pxに（画像の端は出さない） */
+    --title-bottom: calc(var(--bg-y) + var(--bg-w) * 0.356); /* 画面上でのタイトル文字の下端 */
+    background-size: var(--bg-w) auto;
+    background-position: center var(--bg-y);
+    background-repeat: no-repeat;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* 🌟 入力パネルを画面の下側に寄せ、メンバー欄が増えたら上へ伸ばす（スクロール不要に） */
-    justify-content: safe flex-end; /* 画面に収まらない場合だけ上から表示してスクロール */
+    /* 🌟 入力パネルはタイトル文字より下の空きスペースの中央に置く（タイトルと重ならない） */
+    padding: calc(var(--title-bottom) + 8px) 0 12px;
+    justify-content: center;
+    justify-content: safe center; /* 画面に収まらない場合だけ上から表示してスクロール */
     align-items: center;
     overflow-x: hidden;
     overflow-y: auto; /* メンバー入力欄が増えても、スクロールで全体を見られるようにする */
@@ -56,7 +65,7 @@ body {
     width: 95%;
     max-width: 920px; /* 🌟 横幅を広く取り、そのぶん縦を短くしてタイトルに重ならないようにする */
     margin-top: 0;
-    margin-bottom: clamp(12px, 5vh, 64px); /* 🌟 画面下端からの余白（高い画面ほど少し浮かせる） */
+    margin-bottom: 0;
     padding: 18px 28px;
     border-radius: 16px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
@@ -962,7 +971,7 @@ body.admin-mode {
 }
 
 /* 背の低い画面（ノートPCのブラウザなど）では余白をさらに詰めて、タイトルを隠さないようにする */
-@media (max-height: 640px) {
+@media (max-height: 760px) {
     .start-card { padding: 12px 24px; gap: 10px; }
     .input-group label { margin-bottom: 3px; }
     .input-group input, .input-group select { padding-top: 7px; padding-bottom: 7px; }
